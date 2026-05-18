@@ -1,7 +1,7 @@
 from itertools import combinations
 from users.models import User
 from availability.models import Availability
-from preferences.models import CoachPreference, PreferredPairing
+from preferences.models import CoachPreference, PreferredPairing, LineupTemplate
 from training_sessions.models import CrewSeat
 
 BOAT_TYPES = {
@@ -30,7 +30,6 @@ def get_available_rowers(session):
 
 
 def get_already_assigned_rower_ids(session):
-    """Get IDs of rowers already assigned to non-cancelled crews in this session."""
     return set(
         CrewSeat.objects.filter(
             crew__session=session,
@@ -66,29 +65,24 @@ def _user_to_dict(user):
 def generate_suggestions(session):
     """Generate ranked crew suggestions for a session.
 
-    Excludes rowers already assigned to non-cancelled crews in this session.
-    Returns dict with 'suggestions' (rower-only combos) and 'available_coxswains'.
+    Template-sourced suggestions (full or partial) come first, scored by % of seats filled
+    from current availability. Constraint-based combinations are appended.
     """
     available = list(get_available_rowers(session))
     if not available:
         return {'suggestions': [], 'available_coxswains': []}
 
-    # Exclude rowers already in active crews for this session
     assigned_ids = get_already_assigned_rower_ids(session)
-    available = [u for u in available if u.id not in assigned_ids]
+    available_unassigned = [u for u in available if u.id not in assigned_ids]
 
-    if not available:
+    if not available_unassigned:
         return {'suggestions': [], 'available_coxswains': []}
 
-    scullers = [u for u in available if can_scull(u)]
-    sweepers = [u for u in available if can_sweep(u)]
-    coxswains = [u for u in available if is_cox_capable(u)]
+    scullers = [u for u in available_unassigned if can_scull(u)]
+    sweepers = [u for u in available_unassigned if can_sweep(u)]
+    coxswains_unassigned = [u for u in available_unassigned if is_cox_capable(u)]
 
-    # Also include coxswains who are assigned as rowers but could still cox
-    # (dedicated coxswains not yet assigned)
-    all_available_for_cox = list(get_available_rowers(session))
-    all_coxswains = [u for u in all_available_for_cox if is_cox_capable(u)]
-    # Cox can be assigned to multiple boats or not yet assigned
+    all_coxswains = [u for u in available if is_cox_capable(u)]
     unassigned_coxswains = [u for u in all_coxswains if u.id not in assigned_ids]
 
     coach_prefs = list(CoachPreference.objects.filter(
@@ -98,21 +92,77 @@ def generate_suggestions(session):
         coach__team=session.team
     ).prefetch_related('rowers'))
 
-    suggestions = []
+    template_suggestions = _generate_from_templates(session, available_unassigned)
+
+    combo_suggestions = []
+    seen = set()
+    for s in template_suggestions:
+        key = frozenset(r['id'] for r in s['rowers'])
+        seen.add((s['boat_type'], key))
 
     for boat_type, spec in BOAT_TYPES.items():
-        boat_suggestions = _generate_for_boat_type(
-            boat_type, spec, scullers, sweepers, coxswains,
-            coach_prefs, pairings
-        )
-        suggestions.extend(boat_suggestions)
+        for sug in _generate_for_boat_type(
+            boat_type, spec, scullers, sweepers, coxswains_unassigned,
+            coach_prefs, pairings,
+        ):
+            key = frozenset(r['id'] for r in sug['rowers'])
+            if (boat_type, key) in seen:
+                continue
+            seen.add((boat_type, key))
+            sug['source'] = 'constraint'
+            combo_suggestions.append(sug)
 
+    suggestions = template_suggestions + combo_suggestions
     suggestions.sort(key=lambda s: s['score'], reverse=True)
 
     return {
         'suggestions': suggestions,
         'available_coxswains': [_user_to_dict(c) for c in unassigned_coxswains],
     }
+
+
+def _generate_from_templates(session, available_pool):
+    """For each team template, produce a template-sourced suggestion scored by availability fit."""
+    available_ids = {u.id for u in available_pool}
+    user_by_id = {u.id: u for u in available_pool}
+
+    results = []
+    templates = (
+        LineupTemplate.objects
+        .filter(team=session.team)
+        .prefetch_related('seats__rower')
+    )
+
+    for tpl in templates:
+        seats = list(tpl.seats.all())
+        if not seats:
+            continue
+        total = len(seats)
+        rowers = []
+        missing = []
+        for seat in seats:
+            if seat.rower_id in available_ids:
+                rowers.append(user_by_id[seat.rower_id])
+            else:
+                missing.append(seat.rower_id)
+
+        present_count = len(rowers)
+        if present_count == 0:
+            continue
+
+        score = int(100 * present_count / total)
+
+        results.append({
+            'boat_type': tpl.boat_type,
+            'rowers': [_user_to_dict(u) for u in rowers],
+            'score': score,
+            'source': 'template',
+            'template_id': tpl.id,
+            'template_name': tpl.name,
+            'missing_from_template': missing,
+        })
+
+    return results
 
 
 def _generate_for_boat_type(boat_type, spec, scullers, sweepers, coxswains, coach_prefs, pairings):
@@ -125,20 +175,17 @@ def _generate_for_boat_type(boat_type, spec, scullers, sweepers, coxswains, coac
     if len(eligible) < seats:
         return []
 
-    # For coxed boats, still need at least one cox available
     if is_coxed and not coxswains:
         return []
 
     results = []
-    seen = set()  # track unique combos by frozenset of IDs
+    seen = set()
     max_combos = 50
     combo_count = 0
 
     for combo in combinations(eligible, seats):
         if combo_count >= max_combos:
             break
-
-        # Deduplicate: same set of rowers = same suggestion
         combo_key = frozenset(u.id for u in combo)
         if combo_key in seen:
             continue
@@ -163,7 +210,6 @@ def _generate_for_boat_type(boat_type, spec, scullers, sweepers, coxswains, coac
 
 
 def _validate_sides(rowers, seats):
-    """Check if a sweep crew can fill port/starboard correctly."""
     port_needed = seats // 2
     starboard_needed = seats - port_needed
 
@@ -181,7 +227,6 @@ def _validate_sides(rowers, seats):
 
 
 def _score_combination(rowers, boat_type, coach_prefs, pairings):
-    """Score a crew combination based on coach preferences."""
     score = 0
     rower_ids = {r.id for r in rowers}
 

@@ -1,0 +1,4366 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>ROWORG — Rowing Team App</title>
+<style>/* ROWORG — Rowing team app
+   Strava × Linear: deep navy canvas, hairline borders, warm coral accent
+   Type: Geist + Geist Mono */
+
+@import url('https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700;800&family=Geist+Mono:wght@400;500;600&display=swap');
+
+/* ---- tokens (default; some overridden by tweaks) ---- */
+:root {
+  /* surfaces */
+  --bg-0: #08090d;
+  --bg-1: #0e1118;
+  --bg-2: #151924;
+  --bg-3: #1c2230;
+  --bg-4: #232a3c;
+  --border: #242b3c;
+  --border-strong: #323b52;
+
+  /* text */
+  --text-0: #f4f1ea;
+  --text-1: #a4adc4;
+  --text-2: #6c7691;
+  --text-3: #4a536a;
+
+  /* signal */
+  --accent: #ff5d3a;
+  --accent-soft: #ff5d3a26;
+  --accent-press: #e64a28;
+  --lime: #b6f06a;
+  --lime-soft: #b6f06a1f;
+  --water: #66a7ff;
+  --water-soft: #66a7ff1f;
+  --warn: #ffb43a;
+  --danger: #ff4f6b;
+
+  /* sizing */
+  --r-sm: 6px;
+  --r-md: 10px;
+  --r-lg: 14px;
+  --r-xl: 20px;
+
+  --pad: 1;          /* density multiplier (tweakable) */
+  --gap-1: calc(4px * var(--pad));
+  --gap-2: calc(8px * var(--pad));
+  --gap-3: calc(12px * var(--pad));
+  --gap-4: calc(16px * var(--pad));
+  --gap-5: calc(24px * var(--pad));
+  --gap-6: calc(32px * var(--pad));
+
+  --shadow-1: 0 1px 0 rgba(255,255,255,.04) inset, 0 1px 2px rgba(0,0,0,.4);
+  --shadow-2: 0 1px 0 rgba(255,255,255,.05) inset, 0 8px 24px rgba(0,0,0,.35);
+
+  --font-sans: 'Geist', system-ui, -apple-system, sans-serif;
+  --font-mono: 'Geist Mono', ui-monospace, monospace;
+}
+
+/* ---- reset ---- */
+*, *::before, *::after { box-sizing: border-box; }
+html, body, #root { height: 100%; }
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-feature-settings: 'ss01', 'cv11';
+  color: var(--text-0);
+  background: var(--bg-1);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overflow: hidden;
+}
+button { font-family: inherit; cursor: pointer; }
+ul, ol { list-style: none; padding: 0; margin: 0; }
+input, select, textarea { font-family: inherit; color: inherit; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: var(--bg-3); border-radius: 8px; border: 2px solid var(--bg-1); }
+::-webkit-scrollbar-thumb:hover { background: var(--bg-4); }
+::-webkit-scrollbar-track { background: transparent; }
+
+/* ---- layout shell ---- */
+.app {
+  display: grid;
+  grid-template-columns: 248px 1fr;
+  height: 100vh;
+  background: var(--bg-1);
+}
+.app.dense { --pad: 0.85; }
+.app.airy { --pad: 1.2; }
+
+/* ===== SIDEBAR ===== */
+.sidebar {
+  background: var(--bg-0);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  padding: 20px 16px;
+  gap: 24px;
+  min-width: 0;
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 4px 4px;
+}
+.brand-mark {
+  width: 30px; height: 30px;
+  border-radius: 8px;
+  background: var(--accent);
+  display: grid; place-items: center;
+  color: #1a0a05;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: -.04em;
+  box-shadow: 0 0 0 1px rgba(255,255,255,.08) inset, 0 6px 20px -6px var(--accent);
+}
+.brand-name {
+  font-weight: 700;
+  letter-spacing: -.02em;
+  font-size: 16px;
+}
+.brand-name span { color: var(--text-2); font-weight: 500; }
+
+.nav-group { display: flex; flex-direction: column; gap: 2px; }
+.nav-label {
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  font-size: 10px;
+  letter-spacing: .12em;
+  color: var(--text-3);
+  padding: 8px 8px 4px;
+}
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: var(--r-sm);
+  color: var(--text-1);
+  font-size: 13.5px;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  background: none;
+  text-align: left;
+  width: 100%;
+  transition: color .12s, background .12s;
+}
+.nav-item:hover { color: var(--text-0); background: var(--bg-2); }
+.nav-item.active { color: var(--text-0); background: var(--bg-2); }
+.nav-item.active .nav-dot { background: var(--accent); }
+.nav-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--text-3);
+  flex-shrink: 0;
+}
+.nav-count {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-2);
+  background: var(--bg-2);
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+.nav-item.active .nav-count { background: var(--bg-3); color: var(--text-1); }
+
+/* role switcher */
+.role-switch {
+  margin-top: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: 4px;
+  background: var(--bg-1);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px;
+  position: relative;
+}
+.role-btn {
+  border: none;
+  background: transparent;
+  color: var(--text-1);
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: -.01em;
+  padding: 8px 6px;
+  border-radius: 7px;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  transition: color .15s;
+  z-index: 1;
+}
+.role-btn.active { color: var(--text-0); }
+.role-pill {
+  position: absolute;
+  top: 4px; bottom: 4px;
+  width: calc(50% - 5px);
+  background: var(--bg-3);
+  border-radius: 7px;
+  transition: transform .22s cubic-bezier(.4,.0,.2,1);
+  z-index: 0;
+  box-shadow: 0 1px 0 rgba(255,255,255,.05) inset;
+}
+.role-pill.right { transform: translateX(calc(100% + 2px)); }
+
+.profile {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  border-radius: var(--r-md);
+}
+.avatar {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent), #c5350f);
+  color: #fff;
+  display: grid; place-items: center;
+  font-weight: 600;
+  font-size: 12px;
+  flex-shrink: 0;
+  box-shadow: 0 0 0 1px rgba(255,255,255,.08) inset;
+}
+.avatar.cool { background: linear-gradient(135deg, var(--water), #2c6fd6); }
+.avatar.lime { background: linear-gradient(135deg, var(--lime), #6ab022); color: #0a1500; }
+.profile-meta { font-size: 12.5px; line-height: 1.3; min-width: 0; }
+.profile-meta .name { font-weight: 600; color: var(--text-0); }
+.profile-meta .sub { color: var(--text-2); font-size: 11.5px; }
+
+/* ===== MAIN ===== */
+.main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  background: var(--bg-1);
+}
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 24px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-1);
+  flex-shrink: 0;
+}
+.topbar h1 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -.02em;
+}
+.topbar .crumb {
+  color: var(--text-2);
+  font-size: 13px;
+  font-weight: 500;
+}
+.topbar .crumb b { color: var(--text-0); font-weight: 600; }
+
+.content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px 32px 80px;
+  min-height: 0;
+}
+
+.page-title {
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+  margin: 0 0 24px;
+}
+.page-title h2 {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -.03em;
+}
+.page-title .sub {
+  color: var(--text-2);
+  font-size: 14px;
+  margin-bottom: 4px;
+}
+.spacer { flex: 1; }
+
+/* ===== BUTTONS ===== */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 500;
+  padding: 7px 12px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--border);
+  background: var(--bg-2);
+  color: var(--text-0);
+  transition: all .12s;
+  letter-spacing: -.01em;
+  white-space: nowrap;
+}
+.btn:hover { background: var(--bg-3); border-color: var(--border-strong); }
+.btn:active { transform: translateY(1px); }
+.btn.primary {
+  background: var(--accent);
+  border-color: transparent;
+  color: #1a0a05;
+  font-weight: 600;
+  box-shadow: 0 1px 0 rgba(255,255,255,.2) inset, 0 4px 14px -4px var(--accent);
+}
+.btn.primary:hover { background: var(--accent-press); }
+.btn.ghost { background: transparent; border-color: transparent; color: var(--text-1); }
+.btn.ghost:hover { background: var(--bg-2); color: var(--text-0); }
+.btn.danger { color: var(--danger); }
+.btn.danger:hover { background: #ff4f6b14; border-color: #ff4f6b40; }
+.btn.success { color: var(--lime); }
+.btn.success:hover { background: var(--lime-soft); border-color: #b6f06a40; }
+.btn.sm { padding: 4px 8px; font-size: 12px; }
+.btn.lg { padding: 10px 16px; font-size: 14px; }
+.btn.icon { padding: 7px; }
+.btn:disabled { opacity: .4; cursor: not-allowed; }
+
+.kbd {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--bg-3);
+  border: 1px solid var(--border);
+  color: var(--text-1);
+  letter-spacing: 0;
+}
+
+/* ===== CARDS ===== */
+.card {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+}
+.card-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+}
+.card-head h3 { margin: 0; font-size: 13px; font-weight: 600; letter-spacing: -.01em; }
+.card-head .hint { color: var(--text-2); font-size: 12px; }
+.card-body { padding: 18px; }
+
+/* ===== BADGES ===== */
+.badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--bg-3);
+  color: var(--text-1);
+  border: 1px solid var(--border);
+}
+.badge .b-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: currentColor;
+}
+.badge.lime { color: var(--lime); background: var(--lime-soft); border-color: #b6f06a30; }
+.badge.water { color: var(--water); background: var(--water-soft); border-color: #66a7ff30; }
+.badge.coral { color: var(--accent); background: var(--accent-soft); border-color: #ff5d3a30; }
+.badge.warn { color: var(--warn); background: #ffb43a1f; border-color: #ffb43a30; }
+.badge.danger { color: var(--danger); background: #ff4f6b1f; border-color: #ff4f6b30; }
+
+/* ===== METRIC BLOCK ===== */
+.metric-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1px;
+  background: var(--border);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  margin-bottom: 24px;
+}
+.metric {
+  background: var(--bg-2);
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.metric .label {
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  font-size: 10px;
+  letter-spacing: .12em;
+  color: var(--text-2);
+}
+.metric .val {
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -.03em;
+  font-feature-settings: 'tnum';
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+.metric .val small { color: var(--text-2); font-size: 13px; font-weight: 500; }
+.metric .trend { font-family: var(--font-mono); font-size: 11px; color: var(--lime); }
+.metric .trend.down { color: var(--danger); }
+
+/* ===== AVAILABILITY GRID ===== */
+.avail {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  user-select: none;
+}
+.avail-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+}
+.avail-head .week {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: var(--bg-1);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: 2px;
+}
+.avail-head .week button {
+  background: none; border: none; color: var(--text-1);
+  padding: 4px 8px; border-radius: 6px; font-size: 13px;
+}
+.avail-head .week button:hover { background: var(--bg-2); color: var(--text-0); }
+.avail-head .week-label {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  padding: 4px 10px;
+  color: var(--text-0);
+  min-width: 130px;
+  text-align: center;
+}
+.avail-head .legend {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 12px;
+  color: var(--text-2);
+}
+.legend-key {
+  display: flex; align-items: center; gap: 6px;
+}
+.legend-swatch { width: 12px; height: 12px; border-radius: 3px; }
+.legend-swatch.you { background: var(--lime); }
+.legend-swatch.session { background: var(--accent); }
+.legend-swatch.team { background: var(--water-soft); border: 1px solid var(--water); }
+
+.avail-grid {
+  display: grid;
+  grid-template-columns: 56px repeat(7, 1fr);
+  position: relative;
+}
+.avail-grid .col {
+  border-left: 1px solid var(--border);
+  position: relative;
+  min-height: 100%;
+}
+.avail-grid .col:first-child { border-left: none; }
+.avail-grid .col-head {
+  padding: 10px 8px;
+  border-bottom: 1px solid var(--border);
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: -.01em;
+  text-align: center;
+  background: var(--bg-2);
+  position: sticky;
+  top: 0;
+  z-index: 3;
+}
+.avail-grid .col-head .day-num {
+  font-family: var(--font-mono);
+  color: var(--text-2);
+  font-size: 11px;
+  font-weight: 500;
+  margin-left: 4px;
+}
+.avail-grid .col-head.today { color: var(--accent); }
+.avail-grid .col-head.today .day-num { color: var(--accent); }
+.avail-grid .time-col .col-head { background: transparent; border-bottom: 1px solid var(--border); }
+
+.avail-grid .time-cell {
+  height: 36px;
+  border-bottom: 1px solid var(--border);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-3);
+  padding: 2px 6px 0;
+  text-align: right;
+}
+.avail-grid .slot-cell {
+  height: 36px;
+  border-bottom: 1px solid var(--border);
+  position: relative;
+  cursor: cell;
+}
+.avail-grid .slot-cell.half { border-bottom-style: dashed; border-bottom-color: var(--bg-3); }
+.avail-grid .slot-cell:hover { background: rgba(255,255,255,.015); }
+.avail-grid .col.today-col { background: linear-gradient(180deg, rgba(255,93,58,.04), transparent 30%); }
+
+.slot {
+  position: absolute;
+  left: 4px; right: 4px;
+  background: var(--lime);
+  color: #0a1500;
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: -.01em;
+  box-shadow: 0 1px 0 rgba(255,255,255,.25) inset;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  overflow: hidden;
+  z-index: 2;
+}
+.slot .slot-time {
+  font-family: var(--font-mono);
+  font-weight: 500;
+  font-size: 10px;
+  opacity: .75;
+}
+.slot:hover .slot-remove { opacity: 1; }
+.slot-remove {
+  position: absolute;
+  top: 2px; right: 4px;
+  background: rgba(0,0,0,.2);
+  border: none;
+  color: inherit;
+  font-size: 11px;
+  width: 14px; height: 14px;
+  border-radius: 4px;
+  opacity: 0;
+  display: grid; place-items: center;
+  line-height: 1;
+}
+.slot.session {
+  background: var(--accent);
+  color: #fff;
+}
+.slot.session .slot-time { color: rgba(255,255,255,.7); }
+.slot.team-overlay {
+  background: var(--water-soft);
+  color: var(--water);
+  border: 1px solid #66a7ff40;
+}
+.slot.team-overlay .slot-time { color: var(--water); }
+
+.slot.drafting {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border: 1px dashed var(--accent);
+  pointer-events: none;
+}
+
+/* ===== Lineups ===== */
+.lineups {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 14px;
+}
+.lineup {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 16px;
+  display: flex; flex-direction: column;
+  gap: 12px;
+  position: relative;
+  overflow: hidden;
+  transition: border-color .12s, transform .12s;
+}
+.lineup:hover { border-color: var(--border-strong); }
+.lineup .stripe {
+  position: absolute;
+  top: 0; left: 0; bottom: 0;
+  width: 3px;
+  background: var(--text-3);
+}
+.lineup.confirmed .stripe { background: var(--lime); }
+.lineup.cancelled .stripe { background: var(--danger); }
+.lineup.cancelled { opacity: .55; }
+.lineup.draft .stripe { background: var(--warn); }
+
+.lineup-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.lineup-date {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 4px 10px;
+  background: var(--bg-3);
+  border-radius: 8px;
+  font-family: var(--font-mono);
+  min-width: 48px;
+}
+.lineup-date .d { font-size: 16px; font-weight: 600; line-height: 1; }
+.lineup-date .m { font-size: 9px; color: var(--text-2); text-transform: uppercase; letter-spacing: .08em; margin-top: 2px; }
+.lineup-info { flex: 1; min-width: 0; }
+.lineup-info .boat {
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: -.02em;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.lineup-info .time {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-2);
+  margin-top: 2px;
+}
+.workout {
+  font-size: 12.5px;
+  color: var(--text-1);
+  padding: 8px 10px;
+  background: var(--bg-1);
+  border-radius: 6px;
+  border-left: 2px solid var(--accent);
+  line-height: 1.4;
+}
+.seats {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.seat-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  font-size: 12.5px;
+}
+.seat-row .pos {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-2);
+  width: 38px;
+  flex-shrink: 0;
+}
+.seat-row.self { color: var(--lime); }
+.seat-row.self .pos { color: var(--lime); }
+.seat-row .name { flex: 1; }
+.seat-row .side {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-3);
+}
+
+/* ===== Sessions list (coach) ===== */
+.session-row {
+  display: grid;
+  grid-template-columns: 56px 1fr auto auto;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 18px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  cursor: pointer;
+  transition: border-color .12s, transform .12s;
+}
+.session-row + .session-row { margin-top: 8px; }
+.session-row:hover { border-color: var(--border-strong); }
+.session-row .date-block {
+  background: var(--bg-3);
+  border-radius: 8px;
+  padding: 6px 8px;
+  text-align: center;
+  font-family: var(--font-mono);
+}
+.session-row .date-block .d { font-size: 18px; font-weight: 700; line-height: 1; }
+.session-row .date-block .m { font-size: 9px; color: var(--text-2); text-transform: uppercase; letter-spacing: .08em; margin-top: 2px; }
+.session-row .session-meta .when {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-2);
+}
+.session-row .session-meta .title {
+  font-weight: 600;
+  font-size: 14px;
+  margin-top: 2px;
+}
+.session-row .crew-pill-row {
+  display: flex; gap: 4px;
+}
+.crew-pill {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 3px 7px;
+  border-radius: 6px;
+  background: var(--bg-3);
+  border: 1px solid var(--border);
+  color: var(--text-1);
+}
+.crew-pill.confirmed { background: var(--lime-soft); color: var(--lime); border-color: #b6f06a40; }
+.crew-pill.draft { background: #ffb43a14; color: var(--warn); border-color: #ffb43a40; }
+
+/* ===== Session detail / Suggestions ===== */
+.detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  gap: 20px;
+  align-items: flex-start;
+}
+@media (max-width: 1180px) {
+  .detail-grid { grid-template-columns: 1fr; }
+}
+
+.suggestion {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: 14px;
+  display: flex; flex-direction: column; gap: 10px;
+  transition: border-color .12s;
+}
+.suggestion + .suggestion { margin-top: 8px; }
+.suggestion:hover { border-color: var(--border-strong); }
+.suggestion-top {
+  display: flex; align-items: center; gap: 8px;
+}
+.suggestion-top .boat-tag {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 14px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: var(--bg-3);
+  color: var(--text-0);
+}
+.suggestion-top .score-bar {
+  margin-left: auto;
+  display: flex; align-items: center; gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-2);
+}
+.score-fill {
+  width: 60px;
+  height: 5px;
+  background: var(--bg-3);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.score-fill > div {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), var(--lime));
+}
+.suggestion .crew-list {
+  display: flex; flex-direction: column; gap: 3px;
+  font-size: 12.5px;
+}
+.suggestion .crew-list li {
+  display: flex; align-items: center; gap: 8px;
+  padding: 3px 0;
+}
+.suggestion .crew-list li .pos {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-2);
+  width: 30px;
+}
+
+/* filter strip */
+.filter-strip {
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+.chip {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 4px 10px;
+  border-radius: 99px;
+  border: 1px solid var(--border);
+  background: var(--bg-2);
+  color: var(--text-1);
+  cursor: pointer;
+  transition: all .12s;
+}
+.chip:hover { border-color: var(--border-strong); color: var(--text-0); }
+.chip.active {
+  background: var(--text-0);
+  color: var(--bg-0);
+  border-color: var(--text-0);
+}
+
+/* sort select */
+.select {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  color: var(--text-0);
+  font-size: 12px;
+  padding: 6px 10px;
+  font-family: var(--font-sans);
+}
+
+/* ===== CREW BUILDER — BOAT variant ===== */
+.boat-builder {
+  padding: 20px;
+  background: linear-gradient(180deg, var(--bg-2) 0%, var(--bg-1) 100%);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+}
+.boat-builder .head {
+  display: flex; align-items: center; gap: 12px;
+  margin-bottom: 18px;
+}
+.builder-tabs {
+  display: flex;
+  background: var(--bg-1);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: 3px;
+  gap: 2px;
+}
+.builder-tabs button {
+  background: none; border: none; color: var(--text-1);
+  padding: 5px 12px; font-size: 12px; font-weight: 500;
+  border-radius: 6px;
+}
+.builder-tabs button.active { background: var(--bg-3); color: var(--text-0); }
+
+.boat-stage {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 20px;
+  align-items: start;
+}
+@media (max-width: 920px) {
+  .boat-stage { grid-template-columns: 1fr; }
+}
+
+.roster {
+  background: var(--bg-1);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: 12px;
+  max-height: 520px;
+  overflow-y: auto;
+}
+.roster h4 {
+  margin: 0 0 8px;
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  font-size: 10px;
+  letter-spacing: .12em;
+  color: var(--text-2);
+}
+.rower-chip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  margin-bottom: 4px;
+  cursor: grab;
+  transition: border-color .12s, transform .12s;
+}
+.rower-chip:hover { border-color: var(--border-strong); }
+.rower-chip.dragging { opacity: 0.4; }
+.rower-chip .av {
+  width: 24px; height: 24px; border-radius: 50%;
+  display: grid; place-items: center;
+  font-size: 10px; font-weight: 600;
+  color: #fff;
+  flex-shrink: 0;
+}
+.rower-chip .info { flex: 1; min-width: 0; }
+.rower-chip .info .nm { font-size: 12.5px; font-weight: 500; }
+.rower-chip .info .meta {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-2);
+  display: flex; gap: 6px;
+}
+.rower-chip .info .meta .side-p { color: var(--water); }
+.rower-chip .info .meta .side-s { color: var(--accent); }
+
+/* literal boat */
+.boat {
+  background: var(--bg-1);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 28px 18px;
+  position: relative;
+  overflow: hidden;
+}
+.boat::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(circle at 50% 0, rgba(102,167,255,.06), transparent 60%),
+    radial-gradient(circle at 50% 100%, rgba(102,167,255,.04), transparent 60%);
+  pointer-events: none;
+}
+.boat-bow, .boat-stern {
+  text-align: center;
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  font-size: 10px;
+  letter-spacing: .14em;
+  color: var(--text-3);
+  margin: 4px 0;
+}
+.boat-hull {
+  border: 1px solid var(--border-strong);
+  border-radius: 100px 100px 18px 18px;
+  padding: 16px 8px;
+  background: var(--bg-2);
+  position: relative;
+}
+.boat-hull.flipped { border-radius: 18px 18px 100px 100px; }
+.boat-seats {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.boat-row {
+  display: grid;
+  grid-template-columns: 28px 1fr 28px;
+  gap: 8px;
+  align-items: center;
+}
+.boat-row.cox {
+  margin-bottom: 6px;
+}
+.boat-row .seat-num {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-3);
+  font-weight: 600;
+  text-align: center;
+}
+.boat-row .oar {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-3);
+  text-align: center;
+  padding: 4px 0;
+  border-radius: 4px;
+}
+.boat-row .oar.port { color: var(--water); }
+.boat-row .oar.starboard { color: var(--accent); }
+.boat-seat {
+  background: var(--bg-1);
+  border: 1px dashed var(--border-strong);
+  border-radius: 8px;
+  padding: 8px 12px;
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all .15s;
+}
+.boat-seat.cox-seat {
+  border-radius: 20px;
+  background: var(--water-soft);
+  border-color: var(--water);
+  border-style: solid;
+}
+.boat-seat.over {
+  border-style: solid;
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  transform: scale(1.02);
+}
+.boat-seat.filled {
+  border-style: solid;
+  background: var(--bg-3);
+  border-color: var(--border-strong);
+}
+.boat-seat .empty {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--text-3);
+  font-style: italic;
+}
+.boat-seat .filled-name {
+  display: flex; align-items: center; gap: 8px;
+  flex: 1;
+  font-size: 12.5px;
+  font-weight: 500;
+}
+.boat-seat .remove {
+  margin-left: auto;
+  background: none; border: none;
+  color: var(--text-2);
+  font-size: 14px;
+  width: 18px; height: 18px;
+  border-radius: 4px;
+  display: grid; place-items: center;
+  line-height: 1;
+}
+.boat-seat .remove:hover { background: var(--bg-4); color: var(--danger); }
+
+/* abstract variant */
+.abstract-builder {
+  background: var(--bg-1);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 18px;
+}
+.abstract-seats {
+  display: grid;
+  gap: 6px;
+}
+.abstract-seat {
+  display: grid;
+  grid-template-columns: 36px 1fr 64px;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.abstract-seat.over { border-color: var(--accent); background: var(--accent-soft); }
+.abstract-seat.filled { background: var(--bg-3); }
+.abstract-seat .num {
+  font-family: var(--font-mono);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-2);
+  text-align: center;
+}
+.abstract-seat .name {
+  font-size: 13px;
+  font-weight: 500;
+}
+.abstract-seat.empty .name { color: var(--text-3); font-style: italic; font-weight: 400; }
+.abstract-seat .side-tag {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--text-3);
+  text-align: right;
+}
+.abstract-seat .side-tag.port { color: var(--water); }
+.abstract-seat .side-tag.starboard { color: var(--accent); }
+
+.builder-foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+.builder-foot .stat {
+  display: flex; gap: 6px; align-items: baseline;
+}
+.builder-foot .stat .k {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: .1em;
+  color: var(--text-2);
+}
+.builder-foot .stat .v {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  font-size: 13px;
+}
+
+/* ===== empty state ===== */
+.empty-state {
+  text-align: center;
+  padding: 48px 20px;
+  color: var(--text-2);
+  font-size: 13px;
+  border: 1px dashed var(--border);
+  border-radius: var(--r-lg);
+}
+
+/* ===== mobile ===== */
+.mobile-tabs {
+  display: none;
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  background: var(--bg-0);
+  border-top: 1px solid var(--border);
+  z-index: 50;
+}
+.mobile-tabs .mtab {
+  flex: 1;
+  background: none; border: none;
+  color: var(--text-2);
+  padding: 10px 0 16px;
+  font-size: 11px;
+  font-weight: 500;
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+}
+.mobile-tabs .mtab.active { color: var(--text-0); }
+.mobile-tabs .mtab .mdot {
+  width: 4px; height: 4px; border-radius: 50%;
+  background: transparent;
+}
+.mobile-tabs .mtab.active .mdot { background: var(--accent); }
+
+@media (max-width: 880px) {
+  .app { grid-template-columns: 1fr; }
+  .sidebar { display: none; }
+  .mobile-tabs { display: flex; }
+  .content { padding: 16px 16px 100px; }
+  .topbar { padding: 12px 16px; }
+  .page-title h2 { font-size: 22px; }
+  .metric-row { grid-template-columns: repeat(2, 1fr); }
+  .detail-grid { grid-template-columns: 1fr; }
+  .avail-grid { grid-template-columns: 40px repeat(7, minmax(80px, 1fr)); overflow-x: auto; }
+  .avail-grid-wrap { overflow-x: auto; }
+}
+
+/* drag visuals */
+.drop-hint {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--accent);
+  letter-spacing: -.01em;
+}
+
+/* utility */
+.flex { display: flex; align-items: center; gap: 8px; }
+.gap-2 { gap: 8px; }
+.gap-3 { gap: 12px; }
+.muted { color: var(--text-2); }
+.mono { font-family: var(--font-mono); font-feature-settings: 'tnum'; }
+.tabular { font-variant-numeric: tabular-nums; }
+
+/* warm palette override */
+.app.warm {
+  --bg-0: #100904;
+  --bg-1: #19110a;
+  --bg-2: #221710;
+  --bg-3: #2b1f17;
+  --bg-4: #382a20;
+  --border: #2c1f15;
+  --border-strong: #3e2c1f;
+  --text-0: #f6ecd9;
+  --text-1: #c0a587;
+  --text-2: #8e7257;
+  --text-3: #5f4a38;
+  --accent: #ff7a18;
+  --accent-soft: #ff7a1826;
+  --accent-press: #e0670a;
+  --lime: #e7c44d;
+  --water: #6fb3e8;
+}
+/* lake palette */
+.app.lake {
+  --bg-0: #04101a;
+  --bg-1: #07172a;
+  --bg-2: #0d2238;
+  --bg-3: #122d49;
+  --bg-4: #1a3d62;
+  --border: #173251;
+  --border-strong: #234e7b;
+  --text-0: #eaf3fb;
+  --accent: #ff6f47;
+  --lime: #71e2ad;
+  --water: #5ea8ff;
+}
+</style></head><body>
+<div id="root"></div>
+<script>
+(function(){
+  const RO = window.ResizeObserver;
+  if (RO) { window.ResizeObserver = class extends RO {
+    constructor(cb){ super((e,o)=>{requestAnimationFrame(()=>{try{cb(e,o)}catch(_){}})}); }};}
+  window.addEventListener('error', (e) => {
+    if (e.message && e.message.includes('ResizeObserver loop')) {
+      e.stopImmediatePropagation(); e.preventDefault();
+    }
+  }, true);
+})();
+</script>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script>// Mock data for ROWORG prototype
+window.RowOrgData = (() => {
+  const TEAM = [
+    { id: 1, first_name: 'Alex',     last_name: 'Kovač',     role: 'oarsman',  sweep_side: 'port',       rowing_type: 'both',     can_cox: false, weight: 84, init: 'AK', tint: 'water' },
+    { id: 2, first_name: 'Maya',     last_name: 'Renner',    role: 'oarsman',  sweep_side: 'starboard',  rowing_type: 'sweeping', can_cox: false, weight: 71, init: 'MR', tint: 'coral' },
+    { id: 3, first_name: 'Théo',     last_name: 'Marchand',  role: 'oarsman',  sweep_side: 'port',       rowing_type: 'both',     can_cox: false, weight: 88, init: 'TM', tint: 'water' },
+    { id: 4, first_name: 'Sofia',    last_name: 'Bauer',     role: 'oarsman',  sweep_side: 'starboard',  rowing_type: 'both',     can_cox: false, weight: 74, init: 'SB', tint: 'coral' },
+    { id: 5, first_name: 'Luca',     last_name: 'Ferrari',   role: 'oarsman',  sweep_side: 'port',       rowing_type: 'sweeping', can_cox: false, weight: 81, init: 'LF', tint: 'water' },
+    { id: 6, first_name: 'Iris',     last_name: 'Hansen',    role: 'oarsman',  sweep_side: 'starboard',  rowing_type: 'both',     can_cox: true,  weight: 69, init: 'IH', tint: 'coral' },
+    { id: 7, first_name: 'Niko',     last_name: 'Lindqvist', role: 'oarsman',  sweep_side: 'port',       rowing_type: 'both',     can_cox: false, weight: 86, init: 'NL', tint: 'water' },
+    { id: 8, first_name: 'Eva',      last_name: 'Novak',     role: 'oarsman',  sweep_side: 'starboard',  rowing_type: 'sweeping', can_cox: false, weight: 73, init: 'EN', tint: 'coral' },
+    { id: 9, first_name: 'Pia',      last_name: 'Müller',    role: 'coxswain', sweep_side: 'both',       rowing_type: '',         can_cox: true,  weight: 52, init: 'PM', tint: 'lime' },
+    { id: 10, first_name: 'Jonas',   last_name: 'Weber',     role: 'oarsman',  sweep_side: 'port',       rowing_type: 'sculling', can_cox: false, weight: 79, init: 'JW', tint: 'water' },
+    { id: 11, first_name: 'Hana',    last_name: 'Park',      role: 'oarsman',  sweep_side: 'starboard',  rowing_type: 'both',     can_cox: false, weight: 70, init: 'HP', tint: 'coral' },
+    { id: 12, first_name: 'Coach Ben', last_name: 'Albright', role: 'coach',  sweep_side: '',           rowing_type: '',         can_cox: false, weight: 0,  init: 'BA', tint: 'lime' },
+  ];
+
+  // The current user when in 'rower' mode
+  const ME_ROWER = TEAM.find(u => u.id === 1);
+  const ME_COACH = TEAM.find(u => u.id === 12);
+
+  // Helpers
+  const today = new Date('2026-05-17T08:00:00'); // pinned for deterministic visuals
+  const monday = (d) => {
+    const x = new Date(d);
+    const day = x.getDay();
+    const diff = x.getDate() - day + (day === 0 ? -6 : 1);
+    x.setDate(diff); x.setHours(0,0,0,0); return x;
+  };
+  const fmt = (d) => d.toISOString().split('T')[0];
+
+  const WEEK_START = monday(today);
+
+  // Availability for current rower (Alex Kovač) this week
+  // day_of_week 0=Mon ... 6=Sun ; times in 24h "HH:MM"
+  const MY_AVAIL = [
+    { id: 1, day: 0, start: '06:00', end: '08:00' },
+    { id: 2, day: 0, start: '17:30', end: '19:30' },
+    { id: 3, day: 1, start: '06:00', end: '07:30' },
+    { id: 4, day: 2, start: '06:00', end: '08:00' },
+    { id: 5, day: 2, start: '18:00', end: '20:00' },
+    { id: 6, day: 3, start: '06:00', end: '07:30' },
+    { id: 7, day: 5, start: '08:00', end: '11:00' },
+    { id: 8, day: 6, start: '09:00', end: '11:00' },
+  ];
+
+  // Team heatmap (how many teammates are free in this slot)
+  // Encoded as ranges per day -> count
+  const TEAM_HEATMAP = [
+    { day: 0, start: '06:00', end: '08:00', count: 9 },
+    { day: 0, start: '17:30', end: '19:30', count: 7 },
+    { day: 1, start: '06:00', end: '07:30', count: 8 },
+    { day: 2, start: '06:00', end: '08:00', count: 10 },
+    { day: 2, start: '18:00', end: '20:00', count: 6 },
+    { day: 3, start: '06:00', end: '07:30', count: 9 },
+    { day: 4, start: '06:00', end: '07:30', count: 7 },
+    { day: 5, start: '08:00', end: '11:00', count: 11 },
+    { day: 6, start: '09:00', end: '11:00', count: 8 },
+  ];
+
+  // Scheduled sessions this week (for coach + rower views)
+  const SESSIONS = [
+    {
+      id: 101,
+      date: '2026-05-18', day: 0,
+      start: '06:00', end: '07:30',
+      title: 'Steady State',
+      description: '6×8 min @ rate 20 — long steady, focus on length and timing.',
+      crews: [
+        {
+          id: 1001, boat_type: '8+', status: 'confirmed',
+          seats: [
+            { num: 1, rower: 1, side: 'port' },
+            { num: 2, rower: 2, side: 'starboard' },
+            { num: 3, rower: 3, side: 'port' },
+            { num: 4, rower: 4, side: 'starboard' },
+            { num: 5, rower: 5, side: 'port' },
+            { num: 6, rower: 6, side: 'starboard' },
+            { num: 7, rower: 7, side: 'port' },
+            { num: 8, rower: 8, side: 'starboard' },
+            { num: 0, rower: 9, side: 'cox', is_cox: true },
+          ],
+        },
+      ],
+    },
+    {
+      id: 102,
+      date: '2026-05-19', day: 1,
+      start: '06:00', end: '07:00',
+      title: 'Sprint Pieces',
+      description: '8×500 m race-pace, rate 32-36. Race start practice.',
+      crews: [
+        {
+          id: 1002, boat_type: '4+', status: 'confirmed',
+          seats: [
+            { num: 1, rower: 4, side: 'starboard' },
+            { num: 2, rower: 5, side: 'port' },
+            { num: 3, rower: 6, side: 'starboard' },
+            { num: 4, rower: 1, side: 'port' },
+            { num: 0, rower: 9, side: 'cox', is_cox: true },
+          ],
+        },
+        {
+          id: 1003, boat_type: '4x', status: 'draft',
+          seats: [
+            { num: 1, rower: 10, side: 'port' },
+            { num: 2, rower: 11, side: 'starboard' },
+            { num: 3, rower: 8, side: 'starboard' },
+            { num: 4, rower: 3, side: 'port' },
+          ],
+        },
+      ],
+    },
+    {
+      id: 103,
+      date: '2026-05-20', day: 2,
+      start: '06:00', end: '08:00',
+      title: 'Long row',
+      description: '90 min UT2. Mixed crews, focus on water feel.',
+      crews: [],
+    },
+    {
+      id: 104,
+      date: '2026-05-23', day: 5,
+      start: '08:00', end: '11:00',
+      title: 'Regatta sim',
+      description: '2×2000 m at race pace. Full warm-up, full cool-down.',
+      crews: [
+        {
+          id: 1004, boat_type: '8+', status: 'draft',
+          seats: [
+            { num: 1, rower: 1, side: 'port' },
+            { num: 2, rower: 4, side: 'starboard' },
+            { num: 3, rower: 3, side: 'port' },
+            { num: 4, rower: 6, side: 'starboard' },
+            { num: 5, rower: 5, side: 'port' },
+            { num: 6, rower: 8, side: 'starboard' },
+            { num: 7, rower: 7, side: 'port' },
+            { num: 8, rower: 2, side: 'starboard' },
+            { num: 0, rower: 9, side: 'cox', is_cox: true },
+          ],
+        },
+      ],
+    },
+  ];
+
+  // Suggestions for the currently open session (we'll just show for session 103)
+  const SUGGESTIONS_BY_SESSION = {
+    103: [
+      {
+        id: 's1', boat_type: '8+', score: 94,
+        notes: 'Balanced port/starboard, full preferred pairings.',
+        rowers: [
+          { id: 1, pos: 'Bow' }, { id: 4, pos: '2' }, { id: 3, pos: '3' }, { id: 6, pos: '4' },
+          { id: 5, pos: '5' }, { id: 2, pos: '6' }, { id: 7, pos: '7' }, { id: 8, pos: 'Stroke' },
+        ],
+      },
+      {
+        id: 's2', boat_type: '4+', score: 88,
+        notes: 'Top-weighted boat, paired strokes.',
+        rowers: [
+          { id: 1, pos: 'Bow' }, { id: 4, pos: '2' }, { id: 5, pos: '3' }, { id: 8, pos: 'Stroke' },
+        ],
+      },
+      {
+        id: 's3', boat_type: '4x', score: 82,
+        notes: 'Scullers only.',
+        rowers: [
+          { id: 10, pos: 'Bow' }, { id: 11, pos: '2' }, { id: 3, pos: '3' }, { id: 7, pos: 'Stroke' },
+        ],
+      },
+      {
+        id: 's4', boat_type: '2-', score: 76,
+        notes: 'Pair — both novice-friendly.',
+        rowers: [{ id: 5, pos: 'Bow' }, { id: 6, pos: 'Stroke' }],
+      },
+      {
+        id: 's5', boat_type: '2x', score: 71,
+        notes: 'Double scull.',
+        rowers: [{ id: 10, pos: 'Bow' }, { id: 11, pos: 'Stroke' }],
+      },
+    ],
+    102: [
+      {
+        id: 's6', boat_type: '4+', score: 91,
+        notes: 'Fastest available 4 with cox.',
+        rowers: [
+          { id: 4, pos: 'Bow' }, { id: 5, pos: '2' }, { id: 6, pos: '3' }, { id: 1, pos: 'Stroke' },
+        ],
+      },
+      {
+        id: 's7', boat_type: '4x', score: 84,
+        notes: 'Mixed scull lineup.',
+        rowers: [
+          { id: 10, pos: 'Bow' }, { id: 11, pos: '2' }, { id: 8, pos: '3' }, { id: 3, pos: 'Stroke' },
+        ],
+      },
+    ],
+  };
+
+  const TEMPLATES = [
+    { id: 't1', name: 'Race VIII',         boat_type: '8+', lineup: [8, 2, 6, 5, 4, 3, 1, 7], cox: 9,    note: 'Primary race lineup. Use unless someone is out.' },
+    { id: 't2', name: 'Training VIII A',   boat_type: '8+', lineup: [2, 8, 5, 6, 1, 4, 3, 7], cox: 9,    note: 'Rotational training crew, swaps weekly.' },
+    { id: 't3', name: 'Lightweight 4+',    boat_type: '4+', lineup: [6, 1, 4, 5],             cox: 9,    note: 'Under-75kg focused, sprint pieces.' },
+    { id: 't4', name: 'Top Quad',          boat_type: '4x', lineup: [11, 8, 10, 3],           cox: null, note: 'Scullers-only; best 4x lineup.' },
+  ];
+
+  const BOAT_TYPES = [
+    { value: '1x', label: '1× Single',     seats: 1, coxed: false },
+    { value: '2x', label: '2× Double',     seats: 2, coxed: false },
+    { value: '2-', label: '2− Pair',       seats: 2, coxed: false },
+    { value: '4x', label: '4× Quad',       seats: 4, coxed: false },
+    { value: '4-', label: '4− Four',       seats: 4, coxed: false },
+    { value: '4+', label: '4+ Coxed Four', seats: 4, coxed: true },
+    { value: '8+', label: '8+ Eight',      seats: 8, coxed: true },
+  ];
+
+  const DAY_LABELS_SHORT = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  const DAY_LABELS = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+  const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+  function findUser(id) { return TEAM.find(u => u.id === id); }
+
+  return {
+    TEAM, MY_AVAIL, TEAM_HEATMAP, SESSIONS, SUGGESTIONS_BY_SESSION,
+    TEMPLATES,
+    BOAT_TYPES, DAY_LABELS, DAY_LABELS_SHORT, MONTHS,
+    ME_ROWER, ME_COACH,
+    today, WEEK_START, monday, fmt, findUser,
+  };
+})();
+</script>
+<script type="text/babel" data-presets="react">
+// tweaks-panel.jsx
+// Reusable Tweaks shell + form-control helpers.
+//
+// Owns the host protocol (listens for __activate_edit_mode / __deactivate_edit_mode,
+// posts __edit_mode_available / __edit_mode_set_keys / __edit_mode_dismissed) so
+// individual prototypes don't re-roll it. Ships a consistent set of controls so you
+// don't hand-draw <input type="range">, segmented radios, steppers, etc.
+//
+// Usage (in an HTML file that loads React + Babel):
+//
+//   const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+//     "primaryColor": "#D97757",
+//     "palette": ["#D97757", "#29261b", "#f6f4ef"],
+//     "fontSize": 16,
+//     "density": "regular",
+//     "dark": false
+//   }/*EDITMODE-END*/;
+//
+//   function App() {
+//     const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
+//     return (
+//       <div style={{ fontSize: t.fontSize, color: t.primaryColor }}>
+//         Hello
+//         <TweaksPanel>
+//           <TweakSection label="Typography" />
+//           <TweakSlider label="Font size" value={t.fontSize} min={10} max={32} unit="px"
+//                        onChange={(v) => setTweak('fontSize', v)} />
+//           <TweakRadio  label="Density" value={t.density}
+//                        options={['compact', 'regular', 'comfy']}
+//                        onChange={(v) => setTweak('density', v)} />
+//           <TweakSection label="Theme" />
+//           <TweakColor  label="Primary" value={t.primaryColor}
+//                        options={['#D97757', '#2A6FDB', '#1F8A5B', '#7A5AE0']}
+//                        onChange={(v) => setTweak('primaryColor', v)} />
+//           <TweakColor  label="Palette" value={t.palette}
+//                        options={[['#D97757', '#29261b', '#f6f4ef'],
+//                                  ['#475569', '#0f172a', '#f1f5f9']]}
+//                        onChange={(v) => setTweak('palette', v)} />
+//           <TweakToggle label="Dark mode" value={t.dark}
+//                        onChange={(v) => setTweak('dark', v)} />
+//         </TweaksPanel>
+//       </div>
+//     );
+//   }
+//
+// ─────────────────────────────────────────────────────────────────────────────
+
+const __TWEAKS_STYLE = `
+  .twk-panel{position:fixed;right:16px;bottom:16px;z-index:2147483646;width:280px;
+    max-height:calc(100vh - 32px);display:flex;flex-direction:column;
+    transform:scale(var(--dc-inv-zoom,1));transform-origin:bottom right;
+    background:rgba(250,249,247,.78);color:#29261b;
+    -webkit-backdrop-filter:blur(24px) saturate(160%);backdrop-filter:blur(24px) saturate(160%);
+    border:.5px solid rgba(255,255,255,.6);border-radius:14px;
+    box-shadow:0 1px 0 rgba(255,255,255,.5) inset,0 12px 40px rgba(0,0,0,.18);
+    font:11.5px/1.4 ui-sans-serif,system-ui,-apple-system,sans-serif;overflow:hidden}
+  .twk-hd{display:flex;align-items:center;justify-content:space-between;
+    padding:10px 8px 10px 14px;cursor:move;user-select:none}
+  .twk-hd b{font-size:12px;font-weight:600;letter-spacing:.01em}
+  .twk-x{appearance:none;border:0;background:transparent;color:rgba(41,38,27,.55);
+    width:22px;height:22px;border-radius:6px;cursor:default;font-size:13px;line-height:1}
+  .twk-x:hover{background:rgba(0,0,0,.06);color:#29261b}
+  .twk-body{padding:2px 14px 14px;display:flex;flex-direction:column;gap:10px;
+    overflow-y:auto;overflow-x:hidden;min-height:0;
+    scrollbar-width:thin;scrollbar-color:rgba(0,0,0,.15) transparent}
+  .twk-body::-webkit-scrollbar{width:8px}
+  .twk-body::-webkit-scrollbar-track{background:transparent;margin:2px}
+  .twk-body::-webkit-scrollbar-thumb{background:rgba(0,0,0,.15);border-radius:4px;
+    border:2px solid transparent;background-clip:content-box}
+  .twk-body::-webkit-scrollbar-thumb:hover{background:rgba(0,0,0,.25);
+    border:2px solid transparent;background-clip:content-box}
+  .twk-row{display:flex;flex-direction:column;gap:5px}
+  .twk-row-h{flex-direction:row;align-items:center;justify-content:space-between;gap:10px}
+  .twk-lbl{display:flex;justify-content:space-between;align-items:baseline;
+    color:rgba(41,38,27,.72)}
+  .twk-lbl>span:first-child{font-weight:500}
+  .twk-val{color:rgba(41,38,27,.5);font-variant-numeric:tabular-nums}
+
+  .twk-sect{font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
+    color:rgba(41,38,27,.45);padding:10px 0 0}
+  .twk-sect:first-child{padding-top:0}
+
+  .twk-field{appearance:none;box-sizing:border-box;width:100%;min-width:0;height:26px;padding:0 8px;
+    border:.5px solid rgba(0,0,0,.1);border-radius:7px;
+    background:rgba(255,255,255,.6);color:inherit;font:inherit;outline:none}
+  .twk-field:focus{border-color:rgba(0,0,0,.25);background:rgba(255,255,255,.85)}
+  select.twk-field{padding-right:22px;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path fill='rgba(0,0,0,.5)' d='M0 0h10L5 6z'/></svg>");
+    background-repeat:no-repeat;background-position:right 8px center}
+
+  .twk-slider{appearance:none;-webkit-appearance:none;width:100%;height:4px;margin:6px 0;
+    border-radius:999px;background:rgba(0,0,0,.12);outline:none}
+  .twk-slider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;
+    width:14px;height:14px;border-radius:50%;background:#fff;
+    border:.5px solid rgba(0,0,0,.12);box-shadow:0 1px 3px rgba(0,0,0,.2);cursor:default}
+  .twk-slider::-moz-range-thumb{width:14px;height:14px;border-radius:50%;
+    background:#fff;border:.5px solid rgba(0,0,0,.12);box-shadow:0 1px 3px rgba(0,0,0,.2);cursor:default}
+
+  .twk-seg{position:relative;display:flex;padding:2px;border-radius:8px;
+    background:rgba(0,0,0,.06);user-select:none}
+  .twk-seg-thumb{position:absolute;top:2px;bottom:2px;border-radius:6px;
+    background:rgba(255,255,255,.9);box-shadow:0 1px 2px rgba(0,0,0,.12);
+    transition:left .15s cubic-bezier(.3,.7,.4,1),width .15s}
+  .twk-seg.dragging .twk-seg-thumb{transition:none}
+  .twk-seg button{appearance:none;position:relative;z-index:1;flex:1;border:0;
+    background:transparent;color:inherit;font:inherit;font-weight:500;min-height:22px;
+    border-radius:6px;cursor:default;padding:4px 6px;line-height:1.2;
+    overflow-wrap:anywhere}
+
+  .twk-toggle{position:relative;width:32px;height:18px;border:0;border-radius:999px;
+    background:rgba(0,0,0,.15);transition:background .15s;cursor:default;padding:0}
+  .twk-toggle[data-on="1"]{background:#34c759}
+  .twk-toggle i{position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;
+    background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.25);transition:transform .15s}
+  .twk-toggle[data-on="1"] i{transform:translateX(14px)}
+
+  .twk-num{display:flex;align-items:center;box-sizing:border-box;min-width:0;height:26px;padding:0 0 0 8px;
+    border:.5px solid rgba(0,0,0,.1);border-radius:7px;background:rgba(255,255,255,.6)}
+  .twk-num-lbl{font-weight:500;color:rgba(41,38,27,.6);cursor:ew-resize;
+    user-select:none;padding-right:8px}
+  .twk-num input{flex:1;min-width:0;height:100%;border:0;background:transparent;
+    font:inherit;font-variant-numeric:tabular-nums;text-align:right;padding:0 8px 0 0;
+    outline:none;color:inherit;-moz-appearance:textfield}
+  .twk-num input::-webkit-inner-spin-button,.twk-num input::-webkit-outer-spin-button{
+    -webkit-appearance:none;margin:0}
+  .twk-num-unit{padding-right:8px;color:rgba(41,38,27,.45)}
+
+  .twk-btn{appearance:none;height:26px;padding:0 12px;border:0;border-radius:7px;
+    background:rgba(0,0,0,.78);color:#fff;font:inherit;font-weight:500;cursor:default}
+  .twk-btn:hover{background:rgba(0,0,0,.88)}
+  .twk-btn.secondary{background:rgba(0,0,0,.06);color:inherit}
+  .twk-btn.secondary:hover{background:rgba(0,0,0,.1)}
+
+  .twk-swatch{appearance:none;-webkit-appearance:none;width:56px;height:22px;
+    border:.5px solid rgba(0,0,0,.1);border-radius:6px;padding:0;cursor:default;
+    background:transparent;flex-shrink:0}
+  .twk-swatch::-webkit-color-swatch-wrapper{padding:0}
+  .twk-swatch::-webkit-color-swatch{border:0;border-radius:5.5px}
+  .twk-swatch::-moz-color-swatch{border:0;border-radius:5.5px}
+
+  .twk-chips{display:flex;gap:6px}
+  .twk-chip{position:relative;appearance:none;flex:1;min-width:0;height:46px;
+    padding:0;border:0;border-radius:6px;overflow:hidden;cursor:default;
+    box-shadow:0 0 0 .5px rgba(0,0,0,.12),0 1px 2px rgba(0,0,0,.06);
+    transition:transform .12s cubic-bezier(.3,.7,.4,1),box-shadow .12s}
+  .twk-chip:hover{transform:translateY(-1px);
+    box-shadow:0 0 0 .5px rgba(0,0,0,.18),0 4px 10px rgba(0,0,0,.12)}
+  .twk-chip[data-on="1"]{box-shadow:0 0 0 1.5px rgba(0,0,0,.85),
+    0 2px 6px rgba(0,0,0,.15)}
+  .twk-chip>span{position:absolute;top:0;bottom:0;right:0;width:34%;
+    display:flex;flex-direction:column;box-shadow:-1px 0 0 rgba(0,0,0,.1)}
+  .twk-chip>span>i{flex:1;box-shadow:0 -1px 0 rgba(0,0,0,.1)}
+  .twk-chip>span>i:first-child{box-shadow:none}
+  .twk-chip svg{position:absolute;top:6px;left:6px;width:13px;height:13px;
+    filter:drop-shadow(0 1px 1px rgba(0,0,0,.3))}
+`;
+
+// ── useTweaks ───────────────────────────────────────────────────────────────
+// Single source of truth for tweak values. setTweak persists via the host
+// (__edit_mode_set_keys → host rewrites the EDITMODE block on disk).
+function useTweaks(defaults) {
+  const [values, setValues] = React.useState(defaults);
+  // Accepts either setTweak('key', value) or setTweak({ key: value, ... }) so a
+  // useState-style call doesn't write a "[object Object]" key into the persisted
+  // JSON block.
+  const setTweak = React.useCallback((keyOrEdits, val) => {
+    const edits = typeof keyOrEdits === 'object' && keyOrEdits !== null
+      ? keyOrEdits : { [keyOrEdits]: val };
+    setValues((prev) => ({ ...prev, ...edits }));
+    window.parent.postMessage({ type: '__edit_mode_set_keys', edits }, '*');
+    // Same-window signal so in-page listeners (deck-stage rail thumbnails)
+    // can react — the parent message only reaches the host, not peers.
+    window.dispatchEvent(new CustomEvent('tweakchange', { detail: edits }));
+  }, []);
+  return [values, setTweak];
+}
+
+// ── TweaksPanel ─────────────────────────────────────────────────────────────
+// Floating shell. Registers the protocol listener BEFORE announcing
+// availability — if the announce ran first, the host's activate could land
+// before our handler exists and the toolbar toggle would silently no-op.
+// The close button posts __edit_mode_dismissed so the host's toolbar toggle
+// flips off in lockstep; the host echoes __deactivate_edit_mode back which
+// is what actually hides the panel.
+function TweaksPanel({ title = 'Tweaks', noDeckControls = false, children }) {
+  const [open, setOpen] = React.useState(false);
+  const dragRef = React.useRef(null);
+  // Auto-inject a rail toggle when a <deck-stage> is on the page. The
+  // toggle drives the deck's per-viewer _railVisible via window message;
+  // state is mirrored from the same localStorage key the deck reads so
+  // the control reflects reality across reloads. The mechanism is the
+  // message — authors who want custom placement can post it directly
+  // and pass noDeckControls to suppress this one.
+  const hasDeckStage = React.useMemo(
+    () => typeof document !== 'undefined' && !!document.querySelector('deck-stage'),
+    [],
+  );
+  // deck-stage enables its rail in connectedCallback, but this panel can
+  // mount before that element has upgraded. The initial read catches the
+  // common case; the listener covers mounting first. (Older deck-stage.js
+  // copies still wait for the host's __omelette_rail_enabled postMessage —
+  // same listener handles those.)
+  const [railEnabled, setRailEnabled] = React.useState(
+    () => hasDeckStage && !!document.querySelector('deck-stage')?._railEnabled,
+  );
+  React.useEffect(() => {
+    if (!hasDeckStage || railEnabled) return undefined;
+    const onMsg = (e) => {
+      if (e.data && e.data.type === '__omelette_rail_enabled') setRailEnabled(true);
+    };
+    window.addEventListener('message', onMsg);
+    return () => window.removeEventListener('message', onMsg);
+  }, [hasDeckStage, railEnabled]);
+  const [railVisible, setRailVisible] = React.useState(() => {
+    try { return localStorage.getItem('deck-stage.railVisible') !== '0'; } catch (e) { return true; }
+  });
+  const toggleRail = (on) => {
+    setRailVisible(on);
+    window.postMessage({ type: '__deck_rail_visible', on }, '*');
+  };
+  const offsetRef = React.useRef({ x: 16, y: 16 });
+  const PAD = 16;
+
+  const clampToViewport = React.useCallback(() => {
+    const panel = dragRef.current;
+    if (!panel) return;
+    const w = panel.offsetWidth, h = panel.offsetHeight;
+    const maxRight = Math.max(PAD, window.innerWidth - w - PAD);
+    const maxBottom = Math.max(PAD, window.innerHeight - h - PAD);
+    offsetRef.current = {
+      x: Math.min(maxRight, Math.max(PAD, offsetRef.current.x)),
+      y: Math.min(maxBottom, Math.max(PAD, offsetRef.current.y)),
+    };
+    panel.style.right = offsetRef.current.x + 'px';
+    panel.style.bottom = offsetRef.current.y + 'px';
+  }, []);
+
+  React.useEffect(() => {
+    if (!open) return;
+    clampToViewport();
+    if (typeof ResizeObserver === 'undefined') {
+      window.addEventListener('resize', clampToViewport);
+      return () => window.removeEventListener('resize', clampToViewport);
+    }
+    const ro = new ResizeObserver(clampToViewport);
+    ro.observe(document.documentElement);
+    return () => ro.disconnect();
+  }, [open, clampToViewport]);
+
+  React.useEffect(() => {
+    const onMsg = (e) => {
+      const t = e?.data?.type;
+      if (t === '__activate_edit_mode') setOpen(true);
+      else if (t === '__deactivate_edit_mode') setOpen(false);
+    };
+    window.addEventListener('message', onMsg);
+    window.parent.postMessage({ type: '__edit_mode_available' }, '*');
+    return () => window.removeEventListener('message', onMsg);
+  }, []);
+
+  const dismiss = () => {
+    setOpen(false);
+    window.parent.postMessage({ type: '__edit_mode_dismissed' }, '*');
+  };
+
+  const onDragStart = (e) => {
+    const panel = dragRef.current;
+    if (!panel) return;
+    const r = panel.getBoundingClientRect();
+    const sx = e.clientX, sy = e.clientY;
+    const startRight = window.innerWidth - r.right;
+    const startBottom = window.innerHeight - r.bottom;
+    const move = (ev) => {
+      offsetRef.current = {
+        x: startRight - (ev.clientX - sx),
+        y: startBottom - (ev.clientY - sy),
+      };
+      clampToViewport();
+    };
+    const up = () => {
+      window.removeEventListener('mousemove', move);
+      window.removeEventListener('mouseup', up);
+    };
+    window.addEventListener('mousemove', move);
+    window.addEventListener('mouseup', up);
+  };
+
+  if (!open) return null;
+  return (
+    <>
+      <style>{__TWEAKS_STYLE}</style>
+      <div ref={dragRef} className="twk-panel" data-noncommentable=""
+           style={{ right: offsetRef.current.x, bottom: offsetRef.current.y }}>
+        <div className="twk-hd" onMouseDown={onDragStart}>
+          <b>{title}</b>
+          <button className="twk-x" aria-label="Close tweaks"
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onClick={dismiss}>✕</button>
+        </div>
+        <div className="twk-body">
+          {children}
+          {hasDeckStage && railEnabled && !noDeckControls && (
+            <TweakSection label="Deck">
+              <TweakToggle label="Thumbnail rail" value={railVisible} onChange={toggleRail} />
+            </TweakSection>
+          )}
+        </div>
+      </div>
+    </>
+  );
+}
+
+// ── Layout helpers ──────────────────────────────────────────────────────────
+
+function TweakSection({ label, children }) {
+  return (
+    <>
+      <div className="twk-sect">{label}</div>
+      {children}
+    </>
+  );
+}
+
+function TweakRow({ label, value, children, inline = false }) {
+  return (
+    <div className={inline ? 'twk-row twk-row-h' : 'twk-row'}>
+      <div className="twk-lbl">
+        <span>{label}</span>
+        {value != null && <span className="twk-val">{value}</span>}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+// ── Controls ────────────────────────────────────────────────────────────────
+
+function TweakSlider({ label, value, min = 0, max = 100, step = 1, unit = '', onChange }) {
+  return (
+    <TweakRow label={label} value={`${value}${unit}`}>
+      <input type="range" className="twk-slider" min={min} max={max} step={step}
+             value={value} onChange={(e) => onChange(Number(e.target.value))} />
+    </TweakRow>
+  );
+}
+
+function TweakToggle({ label, value, onChange }) {
+  return (
+    <div className="twk-row twk-row-h">
+      <div className="twk-lbl"><span>{label}</span></div>
+      <button type="button" className="twk-toggle" data-on={value ? '1' : '0'}
+              role="switch" aria-checked={!!value}
+              onClick={() => onChange(!value)}><i /></button>
+    </div>
+  );
+}
+
+function TweakRadio({ label, value, options, onChange }) {
+  const trackRef = React.useRef(null);
+  const [dragging, setDragging] = React.useState(false);
+  // The active value is read by pointer-move handlers attached for the lifetime
+  // of a drag — ref it so a stale closure doesn't fire onChange for every move.
+  const valueRef = React.useRef(value);
+  valueRef.current = value;
+
+  // Segments wrap mid-word once per-segment width runs out. The track is
+  // ~248px (280 panel − 28 body pad − 4 seg pad), each button loses 12px
+  // to its own padding, and 11.5px system-ui averages ~6.3px/char — so 2
+  // options fit ~16 chars each, 3 fit ~10. Past that (or >3 options), fall
+  // back to a dropdown rather than wrap.
+  const labelLen = (o) => String(typeof o === 'object' ? o.label : o).length;
+  const maxLen = options.reduce((m, o) => Math.max(m, labelLen(o)), 0);
+  const fitsAsSegments = maxLen <= ({ 2: 16, 3: 10 }[options.length] ?? 0);
+  if (!fitsAsSegments) {
+    // <select> emits strings — map back to the original option value so the
+    // fallback stays type-preserving (numbers, booleans) like the segment path.
+    const resolve = (s) => {
+      const m = options.find((o) => String(typeof o === 'object' ? o.value : o) === s);
+      return m === undefined ? s : typeof m === 'object' ? m.value : m;
+    };
+    return <TweakSelect label={label} value={value} options={options}
+                        onChange={(s) => onChange(resolve(s))} />;
+  }
+  const opts = options.map((o) => (typeof o === 'object' ? o : { value: o, label: o }));
+  const idx = Math.max(0, opts.findIndex((o) => o.value === value));
+  const n = opts.length;
+
+  const segAt = (clientX) => {
+    const r = trackRef.current.getBoundingClientRect();
+    const inner = r.width - 4;
+    const i = Math.floor(((clientX - r.left - 2) / inner) * n);
+    return opts[Math.max(0, Math.min(n - 1, i))].value;
+  };
+
+  const onPointerDown = (e) => {
+    setDragging(true);
+    const v0 = segAt(e.clientX);
+    if (v0 !== valueRef.current) onChange(v0);
+    const move = (ev) => {
+      if (!trackRef.current) return;
+      const v = segAt(ev.clientX);
+      if (v !== valueRef.current) onChange(v);
+    };
+    const up = () => {
+      setDragging(false);
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+  };
+
+  return (
+    <TweakRow label={label}>
+      <div ref={trackRef} role="radiogroup" onPointerDown={onPointerDown}
+           className={dragging ? 'twk-seg dragging' : 'twk-seg'}>
+        <div className="twk-seg-thumb"
+             style={{ left: `calc(2px + ${idx} * (100% - 4px) / ${n})`,
+                      width: `calc((100% - 4px) / ${n})` }} />
+        {opts.map((o) => (
+          <button key={o.value} type="button" role="radio" aria-checked={o.value === value}>
+            {o.label}
+          </button>
+        ))}
+      </div>
+    </TweakRow>
+  );
+}
+
+function TweakSelect({ label, value, options, onChange }) {
+  return (
+    <TweakRow label={label}>
+      <select className="twk-field" value={value} onChange={(e) => onChange(e.target.value)}>
+        {options.map((o) => {
+          const v = typeof o === 'object' ? o.value : o;
+          const l = typeof o === 'object' ? o.label : o;
+          return <option key={v} value={v}>{l}</option>;
+        })}
+      </select>
+    </TweakRow>
+  );
+}
+
+function TweakText({ label, value, placeholder, onChange }) {
+  return (
+    <TweakRow label={label}>
+      <input className="twk-field" type="text" value={value} placeholder={placeholder}
+             onChange={(e) => onChange(e.target.value)} />
+    </TweakRow>
+  );
+}
+
+function TweakNumber({ label, value, min, max, step = 1, unit = '', onChange }) {
+  const clamp = (n) => {
+    if (min != null && n < min) return min;
+    if (max != null && n > max) return max;
+    return n;
+  };
+  const startRef = React.useRef({ x: 0, val: 0 });
+  const onScrubStart = (e) => {
+    e.preventDefault();
+    startRef.current = { x: e.clientX, val: value };
+    const decimals = (String(step).split('.')[1] || '').length;
+    const move = (ev) => {
+      const dx = ev.clientX - startRef.current.x;
+      const raw = startRef.current.val + dx * step;
+      const snapped = Math.round(raw / step) * step;
+      onChange(clamp(Number(snapped.toFixed(decimals))));
+    };
+    const up = () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+  };
+  return (
+    <div className="twk-num">
+      <span className="twk-num-lbl" onPointerDown={onScrubStart}>{label}</span>
+      <input type="number" value={value} min={min} max={max} step={step}
+             onChange={(e) => onChange(clamp(Number(e.target.value)))} />
+      {unit && <span className="twk-num-unit">{unit}</span>}
+    </div>
+  );
+}
+
+// Relative-luminance contrast pick — checkmarks drawn over a swatch need to
+// read on both #111 and #fafafa without per-option configuration. Hex input
+// only (#rgb / #rrggbb); named or rgb()/hsl() colors fall through to "light".
+function __twkIsLight(hex) {
+  const h = String(hex).replace('#', '');
+  const x = h.length === 3 ? h.replace(/./g, (c) => c + c) : h.padEnd(6, '0');
+  const n = parseInt(x.slice(0, 6), 16);
+  if (Number.isNaN(n)) return true;
+  const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+  return r * 299 + g * 587 + b * 114 > 148000;
+}
+
+const __TwkCheck = ({ light }) => (
+  <svg viewBox="0 0 14 14" aria-hidden="true">
+    <path d="M3 7.2 5.8 10 11 4.2" fill="none" strokeWidth="2.2"
+          strokeLinecap="round" strokeLinejoin="round"
+          stroke={light ? 'rgba(0,0,0,.78)' : '#fff'} />
+  </svg>
+);
+
+// TweakColor — curated color/palette picker. Each option is either a single
+// hex string or an array of 1-5 hex strings; the card adapts — a lone color
+// renders solid, a palette renders colors[0] as the hero (left ~2/3) with the
+// rest stacked in a sharp column on the right. onChange emits the
+// option in the shape it was passed (string stays string, array stays array).
+// Without options it falls back to the native color input for back-compat.
+function TweakColor({ label, value, options, onChange }) {
+  if (!options || !options.length) {
+    return (
+      <div className="twk-row twk-row-h">
+        <div className="twk-lbl"><span>{label}</span></div>
+        <input type="color" className="twk-swatch" value={value}
+               onChange={(e) => onChange(e.target.value)} />
+      </div>
+    );
+  }
+  // Native <input type=color> emits lowercase hex per the HTML spec, so
+  // compare case-insensitively. String() guards JSON.stringify(undefined),
+  // which returns the primitive undefined (no .toLowerCase).
+  const key = (o) => String(JSON.stringify(o)).toLowerCase();
+  const cur = key(value);
+  return (
+    <TweakRow label={label}>
+      <div className="twk-chips" role="radiogroup">
+        {options.map((o, i) => {
+          const colors = Array.isArray(o) ? o : [o];
+          const [hero, ...rest] = colors;
+          const sup = rest.slice(0, 4);
+          const on = key(o) === cur;
+          return (
+            <button key={i} type="button" className="twk-chip" role="radio"
+                    aria-checked={on} data-on={on ? '1' : '0'}
+                    aria-label={colors.join(', ')} title={colors.join(' · ')}
+                    style={{ background: hero }}
+                    onClick={() => onChange(o)}>
+              {sup.length > 0 && (
+                <span>
+                  {sup.map((c, j) => <i key={j} style={{ background: c }} />)}
+                </span>
+              )}
+              {on && <__TwkCheck light={__twkIsLight(hero)} />}
+            </button>
+          );
+        })}
+      </div>
+    </TweakRow>
+  );
+}
+
+function TweakButton({ label, onClick, secondary = false }) {
+  return (
+    <button type="button" className={secondary ? 'twk-btn secondary' : 'twk-btn'}
+            onClick={onClick}>{label}</button>
+  );
+}
+
+Object.assign(window, {
+  useTweaks, TweaksPanel, TweakSection, TweakRow,
+  TweakSlider, TweakToggle, TweakRadio, TweakSelect,
+  TweakText, TweakNumber, TweakColor, TweakButton,
+});
+</script>
+<script type="text/babel" data-presets="react">// ROWORG — Shared UI primitives (icons, avatars, badges)
+const Icon = ({ name, size = 14 }) => {
+  const paths = {
+    home:      'M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z',
+    calendar:  'M4 5h16a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zM3 9h18M8 3v4M16 3v4',
+    boat:      'M2 16c2 2 4 2 6 0s4-2 6 0 4 2 6 0M5 14l1-7h12l1 7M9 7V4h6v3',
+    users:     'M9 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm6-1a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5zM2 20c.5-3 3-5 7-5s6.5 2 7 5M15 14c3 .5 5 2 5 6',
+    bolt:      'M13 2L4 14h7l-1 8 9-12h-7z',
+    filter:    'M3 5h18l-7 9v6l-4-2v-4z',
+    chevL:     'M15 18l-6-6 6-6',
+    chevR:     'M9 6l6 6-6 6',
+    plus:      'M12 5v14M5 12h14',
+    check:     'M5 12l5 5 9-11',
+    x:         'M6 6l12 12M18 6L6 18',
+    menu:      'M4 7h16M4 12h16M4 17h16',
+    search:    'M11 19a8 8 0 1 1 0-16 8 8 0 0 1 0 16zm6-2l4 4',
+    settings:  'M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6zm9 3l-2-1 1-2-2-2-2 1-1-2h-2l-1 2-2-1-2 2 1 2-2 1v2l2 1-1 2 2 2 2-1 1 2h2l1-2 2 1 2-2-1-2 2-1z',
+    bell:      'M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9zM10 21a2 2 0 0 0 4 0',
+    sun:       'M12 4V2M12 22v-2M4 12H2M22 12h-2M5.6 5.6L4.2 4.2M19.8 19.8l-1.4-1.4M5.6 18.4l-1.4 1.4M19.8 4.2l-1.4 1.4M12 17a5 5 0 1 1 0-10 5 5 0 0 1 0 10z',
+    moon:      'M21 13a8 8 0 1 1-10-10 7 7 0 0 0 10 10z',
+    play:      'M6 4l14 8-14 8z',
+    flag:      'M5 21V4m0 0h11l-2 4 2 4H5',
+    trophy:    'M8 4h8v4a4 4 0 0 1-8 0V4zM6 4H4v2a3 3 0 0 0 4 3M18 4h2v2a3 3 0 0 1-4 3M10 14h4M9 21h6M11 14v7M13 14v7',
+    grid:      'M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z',
+    list:      'M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01',
+  };
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+         stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <path d={paths[name] || ''} />
+    </svg>
+  );
+};
+
+const Avatar = ({ user, size = 24 }) => {
+  if (!user) return null;
+  const tintClass = user.tint || 'water';
+  return (
+    <div className={`av ${tintClass === 'lime' ? 'lime' : tintClass === 'coral' ? '' : 'cool'} avatar-mini`}
+         style={{
+           width: size, height: size, borderRadius: '50%',
+           display: 'grid', placeItems: 'center',
+           fontSize: Math.round(size * 0.42),
+           fontWeight: 600,
+           color: tintClass === 'lime' ? '#0a1500' : '#fff',
+           background:
+             tintClass === 'lime'   ? 'linear-gradient(135deg, #b6f06a, #6ab022)' :
+             tintClass === 'water'  ? 'linear-gradient(135deg, #66a7ff, #2c6fd6)' :
+                                      'linear-gradient(135deg, #ff5d3a, #c5350f)',
+           flexShrink: 0,
+           boxShadow: '0 0 0 1px rgba(255,255,255,.08) inset',
+           letterSpacing: '-.02em',
+         }}>
+      {user.init || (user.first_name?.[0] || '?')}
+    </div>
+  );
+};
+
+const StatusBadge = ({ status }) => {
+  if (status === 'confirmed') return <span className="badge lime"><span className="b-dot"></span>Confirmed</span>;
+  if (status === 'cancelled') return <span className="badge danger"><span className="b-dot"></span>Cancelled</span>;
+  return <span className="badge warn"><span className="b-dot"></span>Draft</span>;
+};
+
+const SideTag = ({ side }) => {
+  if (side === 'port') return <span className="side-p mono">PORT</span>;
+  if (side === 'starboard') return <span className="side-s mono">STBD</span>;
+  if (side === 'cox') return <span className="mono" style={{ color: 'var(--water)' }}>COX</span>;
+  return <span className="mono muted">—</span>;
+};
+
+window.Icon = Icon;
+window.Avatar = Avatar;
+window.StatusBadge = StatusBadge;
+window.SideTag = SideTag;
+</script>
+<script type="text/babel" data-presets="react">// Availability calendar — hero component
+// Drag to paint a range on any day. Click a slot to remove.
+
+const HOUR_START = 5;   // 5am
+const HOUR_END   = 21;  // 9pm
+const SLOT_MIN   = 30;  // 30-min granularity
+const ROW_PX     = 18;  // each 30-min row is 18px tall (so an hour = 36px, matches CSS)
+
+// Build the row index (0..N-1) from a "HH:MM" string
+function timeToRow(t) {
+  const [h, m] = t.split(':').map(Number);
+  return (h - HOUR_START) * 2 + (m >= 30 ? 1 : 0);
+}
+function rowToTime(r) {
+  const minutes = HOUR_START * 60 + r * 30;
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+}
+
+const TOTAL_ROWS = (HOUR_END - HOUR_START) * 2;
+
+function AvailabilityCalendar({ tweaks }) {
+  const D = window.RowOrgData;
+  const [slots, setSlots] = React.useState(() => D.MY_AVAIL.map(s => ({ ...s })));
+  const [weekOffset, setWeekOffset] = React.useState(0);
+  const [drag, setDrag] = React.useState(null); // {day, startRow, endRow}
+  const [hover, setHover] = React.useState(null);
+
+  // Compute current week label
+  const weekStart = new Date(D.WEEK_START);
+  weekStart.setDate(weekStart.getDate() + weekOffset * 7);
+  const weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekEnd.getDate() + 6);
+
+  const todayIdx = (() => {
+    if (weekOffset !== 0) return -1;
+    const d = D.today.getDay();
+    return d === 0 ? 6 : d - 1;
+  })();
+
+  // Pre-compute day labels (date + month)
+  const dayInfo = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(weekStart);
+    d.setDate(d.getDate() + i);
+    return {
+      label: D.DAY_LABELS_SHORT[i],
+      num: d.getDate(),
+      month: D.MONTHS[d.getMonth()],
+      isToday: i === todayIdx,
+    };
+  });
+
+  // sessions for this week
+  const sessionsThisWeek = D.SESSIONS.filter(s => {
+    const sd = new Date(s.date + 'T00:00:00');
+    const diff = (sd - weekStart) / 86400000;
+    return diff >= 0 && diff < 7;
+  }).map(s => ({ ...s, day: Math.floor((new Date(s.date + 'T00:00:00') - weekStart) / 86400000) }));
+
+  // team heatmap for this week — only show if tweak enabled
+  const heat = tweaks.showTeamHeatmap ? D.TEAM_HEATMAP : [];
+
+  // ---- drag handlers ----
+  const onCellDown = (day, row, e) => {
+    e.preventDefault();
+    setDrag({ day, startRow: row, endRow: row });
+  };
+  const onCellEnter = (day, row) => {
+    setHover({ day, row });
+    if (drag && drag.day === day) {
+      setDrag(d => ({ ...d, endRow: row }));
+    }
+  };
+  const onMouseUp = () => {
+    if (!drag) return;
+    const a = Math.min(drag.startRow, drag.endRow);
+    const b = Math.max(drag.startRow, drag.endRow) + 1; // inclusive end
+    if (b - a >= 1) {
+      const newSlot = {
+        id: Date.now(),
+        day: drag.day,
+        start: rowToTime(a),
+        end: rowToTime(b),
+      };
+      // remove overlapping existing slots on the same day
+      setSlots(prev => {
+        const filtered = prev.filter(s => {
+          if (s.day !== newSlot.day) return true;
+          const sa = timeToRow(s.start), sb = timeToRow(s.end);
+          return sb <= a || sa >= b; // no overlap
+        });
+        return [...filtered, newSlot];
+      });
+    }
+    setDrag(null);
+  };
+
+  React.useEffect(() => {
+    if (!drag) return;
+    window.addEventListener('mouseup', onMouseUp);
+    return () => window.removeEventListener('mouseup', onMouseUp);
+  });
+
+  const removeSlot = (id, e) => {
+    e.stopPropagation();
+    setSlots(prev => prev.filter(s => s.id !== id));
+  };
+
+  const monthRange = (() => {
+    const a = `${D.MONTHS[weekStart.getMonth()]} ${weekStart.getDate()}`;
+    const b = weekStart.getMonth() === weekEnd.getMonth()
+      ? weekEnd.getDate()
+      : `${D.MONTHS[weekEnd.getMonth()]} ${weekEnd.getDate()}`;
+    return `${a} – ${b}`;
+  })();
+
+  return (
+    <div className="avail">
+      <div className="avail-head">
+        <div className="week">
+          <button onClick={() => setWeekOffset(o => o - 1)} aria-label="Previous week">
+            <Icon name="chevL" size={14} />
+          </button>
+          <span className="week-label">{monthRange}</span>
+          <button onClick={() => setWeekOffset(o => o + 1)} aria-label="Next week">
+            <Icon name="chevR" size={14} />
+          </button>
+        </div>
+        <button className="btn ghost sm" onClick={() => setWeekOffset(0)}>Today</button>
+        <div className="legend">
+          <span className="legend-key"><span className="legend-swatch you"></span>You're free</span>
+          <span className="legend-key"><span className="legend-swatch session"></span>Practice</span>
+          {tweaks.showTeamHeatmap && (
+            <span className="legend-key"><span className="legend-swatch team"></span>Team free</span>
+          )}
+        </div>
+      </div>
+
+      <div className="avail-grid-wrap">
+        <div className="avail-grid" style={{ position: 'relative' }}>
+          {/* time column */}
+          <div className="col time-col">
+            <div className="col-head">&nbsp;</div>
+            {Array.from({ length: TOTAL_ROWS }, (_, r) => (
+              <div key={r} className={`time-cell ${r % 2 === 1 ? 'half' : ''}`}>
+                {r % 2 === 0 ? `${String(HOUR_START + r/2).padStart(2,'0')}:00` : ''}
+              </div>
+            ))}
+          </div>
+
+          {/* day columns */}
+          {dayInfo.map((info, dayIdx) => {
+            const daySlots = slots.filter(s => s.day === dayIdx);
+            const daySessions = sessionsThisWeek.filter(s => s.day === dayIdx);
+            const dayHeat = heat.filter(h => h.day === dayIdx);
+
+            return (
+              <div key={dayIdx} className={`col ${info.isToday ? 'today-col' : ''}`}>
+                <div className={`col-head ${info.isToday ? 'today' : ''}`}>
+                  {info.label}<span className="day-num">{info.num}</span>
+                </div>
+
+                {Array.from({ length: TOTAL_ROWS }, (_, r) => (
+                  <div
+                    key={r}
+                    className={`slot-cell ${r % 2 === 1 ? 'half' : ''}`}
+                    onMouseDown={(e) => onCellDown(dayIdx, r, e)}
+                    onMouseEnter={() => onCellEnter(dayIdx, r)}
+                  />
+                ))}
+
+                {/* team heatmap underlays */}
+                {tweaks.showTeamHeatmap && dayHeat.map((h, i) => {
+                  const a = timeToRow(h.start), b = timeToRow(h.end);
+                  return (
+                    <div key={'h'+i} className="slot team-overlay"
+                         style={{
+                           top: 32 + a * ROW_PX,
+                           height: (b - a) * ROW_PX - 2,
+                           zIndex: 1, opacity: 0.45,
+                         }}>
+                      <span className="slot-time mono">{h.count}/12 free</span>
+                    </div>
+                  );
+                })}
+
+                {/* user availability slots */}
+                {daySlots.map(s => {
+                  const a = timeToRow(s.start), b = timeToRow(s.end);
+                  return (
+                    <div key={s.id} className="slot"
+                         style={{
+                           top: 32 + a * ROW_PX,
+                           height: (b - a) * ROW_PX - 2,
+                         }}>
+                      <span>You're in</span>
+                      <span className="slot-time">{s.start} – {s.end}</span>
+                      <button className="slot-remove" onClick={(e) => removeSlot(s.id, e)} title="Remove">
+                        <Icon name="x" size={10} />
+                      </button>
+                    </div>
+                  );
+                })}
+
+                {/* sessions */}
+                {daySessions.map(s => {
+                  const a = timeToRow(s.start), b = timeToRow(s.end);
+                  return (
+                    <div key={s.id} className="slot session"
+                         style={{
+                           top: 32 + a * ROW_PX,
+                           height: (b - a) * ROW_PX - 2,
+                         }}>
+                      <span>{s.title}</span>
+                      <span className="slot-time">{s.start} – {s.end}</span>
+                    </div>
+                  );
+                })}
+
+                {/* drag preview */}
+                {drag && drag.day === dayIdx && (() => {
+                  const a = Math.min(drag.startRow, drag.endRow);
+                  const b = Math.max(drag.startRow, drag.endRow) + 1;
+                  return (
+                    <div className="slot drafting"
+                         style={{
+                           top: 32 + a * ROW_PX,
+                           height: (b - a) * ROW_PX - 2,
+                         }}>
+                      <span>Drag to set</span>
+                      <span className="slot-time">{rowToTime(a)} – {rowToTime(b)}</span>
+                    </div>
+                  );
+                })()}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+window.AvailabilityCalendar = AvailabilityCalendar;
+</script>
+<script type="text/babel" data-presets="react">// Crew builder — TWO variants
+// (1) Literal boat: visual boat hull with seats laid bow-to-stern, port/starboard oars
+// (2) Abstract: clean numbered seat list with side indicators
+
+function CrewBuilder({ initialBoat = '8+', sessionTitle, variant = 'boat', onSave }) {
+  const D = window.RowOrgData;
+  const [boatValue, setBoatValue] = React.useState(initialBoat);
+  const boat = D.BOAT_TYPES.find(b => b.value === boatValue);
+  const [seats, setSeats] = React.useState(() => buildSeats(boat));
+  const [dragId, setDragId] = React.useState(null);
+  const [hoverIdx, setHoverIdx] = React.useState(null);
+  const [autoFill, setAutoFill] = React.useState(true);
+
+  function buildSeats(b) {
+    const out = [];
+    if (b.coxed) out.push({ idx: 0, num: 0, is_cox: true, rower: null });
+    for (let i = 1; i <= b.seats; i++) {
+      // alternate port/starboard for sweep boats
+      const side =
+        b.value === '1x' || b.value.endsWith('x') ? null :
+        (i % 2 === 1 ? 'port' : 'starboard');
+      out.push({ idx: out.length, num: i, is_cox: false, rower: null, side });
+    }
+    return out;
+  }
+
+  React.useEffect(() => {
+    setSeats(buildSeats(boat));
+  }, [boatValue]);
+
+  const assignedIds = new Set(seats.filter(s => s.rower).map(s => s.rower.id));
+  const teamMembers = D.TEAM.filter(u => u.role !== 'coach');
+  const available = teamMembers.filter(u => !assignedIds.has(u.id));
+
+  // Default auto-fill on first mount — only for the 8+ to show off a populated state
+  React.useEffect(() => {
+    if (!autoFill) return;
+    if (boatValue === '8+' && seats.every(s => !s.rower)) {
+      const seq = boat.coxed
+        ? [9, 1, 2, 3, 4, 5, 6, 7, 8]
+        : [1, 2, 3, 4, 5, 6, 7, 8];
+      setSeats(prev => prev.map((s, i) => ({ ...s, rower: D.findUser(seq[i]) || null })));
+    }
+  }, []);  // run once
+
+  const onDragStart = (rower, e) => {
+    setDragId(rower.id);
+    e.dataTransfer.effectAllowed = 'move';
+    try { e.dataTransfer.setData('text/plain', String(rower.id)); } catch {}
+  };
+  const onDragEnd = () => { setDragId(null); setHoverIdx(null); };
+  const onDragOverSeat = (idx, e) => { e.preventDefault(); setHoverIdx(idx); };
+  const onDragLeaveSeat = () => setHoverIdx(null);
+  const onDropSeat = (idx, e) => {
+    e.preventDefault();
+    const id = parseInt(e.dataTransfer.getData('text/plain'), 10) || dragId;
+    if (!id) return;
+    const rower = D.findUser(id);
+    if (!rower) return;
+    // cox slot only accepts cox-capable
+    const target = seats[idx];
+    if (target.is_cox && !rower.can_cox && rower.role !== 'coxswain') {
+      // accept anyway for prototype; just visually
+    }
+    setSeats(prev => prev.map((s, i) => {
+      if (i === idx) return { ...s, rower };
+      // remove this rower from any other seat
+      if (s.rower && s.rower.id === id) return { ...s, rower: null };
+      return s;
+    }));
+    setHoverIdx(null);
+    setDragId(null);
+  };
+  const removeSeat = (idx) => {
+    setSeats(prev => prev.map((s, i) => i === idx ? { ...s, rower: null } : s));
+  };
+
+  const filled = seats.filter(s => s.rower).length;
+  const total  = seats.length;
+  // crude "balance" — ratio of port/starboard fills
+  const portsFilled = seats.filter(s => s.side === 'port' && s.rower).length;
+  const stbdFilled  = seats.filter(s => s.side === 'starboard' && s.rower).length;
+  const totalWeight = seats.filter(s => s.rower && !s.is_cox).reduce((a,s) => a + (s.rower.weight||0), 0);
+  const rowingCount = seats.filter(s => !s.is_cox).length;
+  const avgWeight  = rowingCount ? Math.round(totalWeight / rowingCount) : 0;
+
+  const HeadControls = (
+    <div className="head">
+      <select className="select" value={boatValue} onChange={e => setBoatValue(e.target.value)}>
+        {D.BOAT_TYPES.map(b => <option key={b.value} value={b.value}>{b.label}</option>)}
+      </select>
+      <select
+        className="select"
+        value=""
+        onChange={(e) => {
+          const tpl = D.TEMPLATES.find(t => t.id === e.target.value);
+          if (!tpl) return;
+          setBoatValue(tpl.boat_type);
+          // defer the load until the new seats are built
+          setTimeout(() => {
+            const boat = D.BOAT_TYPES.find(b => b.value === tpl.boat_type);
+            const out = [];
+            if (boat.coxed) out.push({ idx: 0, num: 0, is_cox: true, rower: tpl.cox ? D.findUser(tpl.cox) : null });
+            // tpl.lineup is stroke→bow; map to seat numbers (seat 1 = bow)
+            // tpl.lineup[0] = stroke = seat[boat.seats], tpl.lineup[last] = bow = seat 1
+            for (let i = 1; i <= boat.seats; i++) {
+              const tplIdx = boat.seats - i; // seat 1 (bow) ← last lineup entry
+              const rid = tpl.lineup[tplIdx];
+              const side =
+                boat.value === '1x' || boat.value.endsWith('x') ? null :
+                (i % 2 === 1 ? 'port' : 'starboard');
+              out.push({ idx: out.length, num: i, is_cox: false, rower: D.findUser(rid) || null, side });
+            }
+            setSeats(out);
+          }, 0);
+        }}
+        style={{ marginLeft: 6 }}
+      >
+        <option value="">Load template…</option>
+        {D.TEMPLATES.map(t => (
+          <option key={t.id} value={t.id}>{t.name} · {t.boat_type}</option>
+        ))}
+      </select>
+      <div className="spacer"></div>
+      <div className="builder-tabs">
+        <button className={variant === 'boat' ? 'active' : ''} onClick={() => onSave?.({ variant: 'boat' })}>
+          <Icon name="boat" size={12} /> Hull
+        </button>
+        <button className={variant === 'abstract' ? 'active' : ''} onClick={() => onSave?.({ variant: 'abstract' })}>
+          <Icon name="list" size={12} /> List
+        </button>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="boat-builder">
+      {HeadControls}
+
+      <div className="boat-stage">
+        {/* ROSTER */}
+        <div className="roster">
+          <h4>Available · {available.length}</h4>
+          {available.map(r => (
+            <div
+              key={r.id}
+              className={`rower-chip ${dragId === r.id ? 'dragging' : ''}`}
+              draggable
+              onDragStart={(e) => onDragStart(r, e)}
+              onDragEnd={onDragEnd}
+            >
+              <Avatar user={r} size={26} />
+              <div className="info">
+                <div className="nm">{r.first_name} {r.last_name}</div>
+                <div className="meta">
+                  <span>{r.weight ? `${r.weight}kg` : (r.role === 'coxswain' ? 'COX' : '')}</span>
+                  {r.sweep_side && r.sweep_side !== 'both' && (
+                    <span className={r.sweep_side === 'port' ? 'side-p' : 'side-s'}>
+                      {r.sweep_side.toUpperCase()}
+                    </span>
+                  )}
+                  {r.sweep_side === 'both' && <span className="muted">P/S</span>}
+                  {r.can_cox && r.role !== 'coxswain' && <span className="muted">+COX</span>}
+                </div>
+              </div>
+            </div>
+          ))}
+          {available.length === 0 && (
+            <div className="muted" style={{ fontSize: 12, padding: 8 }}>All rostered.</div>
+          )}
+        </div>
+
+        {/* BOAT */}
+        {variant === 'boat' ? (
+          <BoatVisual
+            boat={boat} seats={seats} hoverIdx={hoverIdx}
+            onDragOverSeat={onDragOverSeat} onDragLeaveSeat={onDragLeaveSeat}
+            onDropSeat={onDropSeat} removeSeat={removeSeat}
+          />
+        ) : (
+          <AbstractList
+            boat={boat} seats={seats} hoverIdx={hoverIdx}
+            onDragOverSeat={onDragOverSeat} onDragLeaveSeat={onDragLeaveSeat}
+            onDropSeat={onDropSeat} removeSeat={removeSeat}
+          />
+        )}
+      </div>
+
+      <div className="builder-foot">
+        <div className="stat">
+          <span className="k">Filled</span>
+          <span className="v">{filled}/{total}</span>
+        </div>
+        <div className="stat">
+          <span className="k">Avg weight</span>
+          <span className="v">{avgWeight || '—'} {avgWeight ? <span className="muted" style={{fontSize:11}}>kg</span> : null}</span>
+        </div>
+        <div className="stat">
+          <span className="k">P / S</span>
+          <span className="v" style={{ color: portsFilled === stbdFilled ? 'var(--lime)' : 'var(--warn)' }}>
+            {portsFilled} / {stbdFilled}
+          </span>
+        </div>
+        <div className="spacer"></div>
+        <button className="btn ghost" onClick={() => setSeats(buildSeats(boat))}>Clear</button>
+        <button className="btn primary" disabled={filled !== total} onClick={() => onSave?.({ save: true })}>
+          <Icon name="check" size={12} /> Save crew
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ===== Boat visual =====
+function BoatVisual({ boat, seats, hoverIdx, onDragOverSeat, onDragLeaveSeat, onDropSeat, removeSeat }) {
+  const cox = seats.find(s => s.is_cox);
+  const rowers = seats.filter(s => !s.is_cox);
+  // for display: stroke at top (highest seat number), bow at bottom (seat 1)
+  const ordered = [...rowers].sort((a, b) => b.num - a.num);
+  return (
+    <div className="boat">
+      <div className="boat-stern">STERN · STROKE</div>
+      <div className="boat-hull">
+        {cox && (
+          <div className="boat-row cox" style={{ marginBottom: 10 }}>
+            <span className="seat-num">C</span>
+            <SeatDrop
+              seat={cox} idx={cox.idx} hoverIdx={hoverIdx}
+              onDragOverSeat={onDragOverSeat} onDragLeaveSeat={onDragLeaveSeat}
+              onDropSeat={onDropSeat} removeSeat={removeSeat}
+              extraClass="cox-seat"
+              emptyLabel="Drop cox"
+            />
+            <span className="oar">·</span>
+          </div>
+        )}
+        <div className="boat-seats">
+          {ordered.map(seat => {
+            const isPort = seat.side === 'port';
+            const isStbd = seat.side === 'starboard';
+            return (
+              <div key={seat.idx} className="boat-row">
+                <span className="oar port">{isPort ? '◂' : ''}</span>
+                {/* Use a wrapper to display seat num + drop in middle */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span className="seat-num" style={{ width: 24 }}>{seat.num === boat.seats ? 'S' : seat.num === 1 ? 'B' : seat.num}</span>
+                  <SeatDrop
+                    seat={seat} idx={seat.idx} hoverIdx={hoverIdx}
+                    onDragOverSeat={onDragOverSeat} onDragLeaveSeat={onDragLeaveSeat}
+                    onDropSeat={onDropSeat} removeSeat={removeSeat}
+                    style={{ flex: 1 }}
+                    emptyLabel={`Seat ${seat.num}${seat.side ? ` (${seat.side})` : ''}`}
+                  />
+                </div>
+                <span className="oar starboard">{isStbd ? '▸' : ''}</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+      <div className="boat-bow">BOW</div>
+    </div>
+  );
+}
+
+function SeatDrop({ seat, idx, hoverIdx, onDragOverSeat, onDragLeaveSeat, onDropSeat, removeSeat, extraClass = '', emptyLabel = 'Drop rower', style }) {
+  return (
+    <div
+      className={`boat-seat ${extraClass} ${hoverIdx === idx ? 'over' : ''} ${seat.rower ? 'filled' : ''}`}
+      style={style}
+      onDragOver={(e) => onDragOverSeat(idx, e)}
+      onDragLeave={onDragLeaveSeat}
+      onDrop={(e) => onDropSeat(idx, e)}
+    >
+      {seat.rower ? (
+        <div className="filled-name">
+          <Avatar user={seat.rower} size={22} />
+          <span>{seat.rower.first_name} {seat.rower.last_name}</span>
+          <button className="remove" onClick={() => removeSeat(idx)} title="Remove">
+            <Icon name="x" size={10} />
+          </button>
+        </div>
+      ) : (
+        <span className="empty">{emptyLabel}</span>
+      )}
+    </div>
+  );
+}
+
+// ===== Abstract list =====
+function AbstractList({ boat, seats, hoverIdx, onDragOverSeat, onDragLeaveSeat, onDropSeat, removeSeat }) {
+  return (
+    <div className="abstract-builder">
+      <div className="abstract-seats">
+        {seats.map(seat => {
+          const sideClass = seat.is_cox ? '' : seat.side || '';
+          return (
+            <div
+              key={seat.idx}
+              className={`abstract-seat ${hoverIdx === seat.idx ? 'over' : ''} ${seat.rower ? 'filled' : 'empty'}`}
+              onDragOver={(e) => onDragOverSeat(seat.idx, e)}
+              onDragLeave={onDragLeaveSeat}
+              onDrop={(e) => onDropSeat(seat.idx, e)}
+            >
+              <span className="num">{seat.is_cox ? 'C' : seat.num}</span>
+              <div className="name">
+                {seat.rower
+                  ? <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                      <Avatar user={seat.rower} size={22} />
+                      <span>{seat.rower.first_name} {seat.rower.last_name}</span>
+                      {seat.rower.weight ? <span className="mono muted" style={{ fontSize: 10 }}>{seat.rower.weight}kg</span> : null}
+                      <button className="remove" onClick={() => removeSeat(seat.idx)} style={{ marginLeft: 'auto' }}>
+                        <Icon name="x" size={10} />
+                      </button>
+                    </div>
+                  : (seat.is_cox ? 'Drop cox here' : `Drop ${seat.side || 'rower'} here`)
+                }
+              </div>
+              <span className={`side-tag ${sideClass}`}>
+                {seat.is_cox ? 'COX' : (seat.side ? seat.side.toUpperCase() : 'SCULL')}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+window.CrewBuilder = CrewBuilder;
+</script>
+<script type="text/babel" data-presets="react">// Rower & Coach pages
+
+// ============ ROWER: My Lineups + Availability ============
+function RowerHome({ tweaks }) {
+  const D = window.RowOrgData;
+  const me = D.ME_ROWER;
+
+  // collect this user's upcoming lineups
+  const myLineups = [];
+  D.SESSIONS.forEach(session => {
+    session.crews.forEach(crew => {
+      const mySeat = crew.seats.find(s => s.rower === me.id);
+      if (mySeat) myLineups.push({ session, crew, mySeat });
+    });
+  });
+
+  // metrics
+  const confirmedCount = myLineups.filter(l => l.crew.status === 'confirmed').length;
+  const hoursThisWeek = myLineups.reduce((acc, l) => {
+    const [sh, sm] = l.session.start.split(':').map(Number);
+    const [eh, em] = l.session.end.split(':').map(Number);
+    return acc + ((eh - sh) + (em - sm) / 60);
+  }, 0);
+  const avgSlot = (() => {
+    if (D.MY_AVAIL.length === 0) return 0;
+    const totalH = D.MY_AVAIL.reduce((a, s) => {
+      const [sh, sm] = s.start.split(':').map(Number);
+      const [eh, em] = s.end.split(':').map(Number);
+      return a + ((eh - sh) + (em - sm) / 60);
+    }, 0);
+    return Math.round((totalH / D.MY_AVAIL.length) * 10) / 10;
+  })();
+
+  return (
+    <>
+      <div className="page-title">
+        <div>
+          <div className="sub mono">WELCOME BACK</div>
+          <h2>Hey, {me.first_name}.</h2>
+        </div>
+        <div className="spacer"></div>
+        <button className="btn"><Icon name="bell" size={13} /> Notify on lineup</button>
+        <button className="btn primary"><Icon name="plus" size={13} /> Add availability</button>
+      </div>
+
+      <div className="metric-row">
+        <div className="metric">
+          <span className="label">Hrs available · this wk</span>
+          <span className="val tabular">{D.MY_AVAIL.reduce((a,s)=>{const [sh,sm]=s.start.split(':').map(Number);const [eh,em]=s.end.split(':').map(Number);return a+((eh-sh)+(em-sm)/60);},0).toFixed(1)} <small>h</small></span>
+          <span className="trend">↑ 2.5h vs last wk</span>
+        </div>
+        <div className="metric">
+          <span className="label">Practices booked</span>
+          <span className="val tabular">{myLineups.length}</span>
+          <span className="trend muted mono">{confirmedCount} confirmed · {myLineups.length - confirmedCount} draft</span>
+        </div>
+        <div className="metric">
+          <span className="label">On-water hours</span>
+          <span className="val tabular">{hoursThisWeek.toFixed(1)} <small>h</small></span>
+          <span className="trend">Sweep · Port</span>
+        </div>
+        <div className="metric">
+          <span className="label">Avg slot length</span>
+          <span className="val tabular">{avgSlot} <small>h</small></span>
+          <span className="trend muted mono">{D.MY_AVAIL.length} slots set</span>
+        </div>
+      </div>
+
+      <SectionTitle title="This week's availability" hint="Drag any cell on the grid to add a slot. Click ✕ to remove." />
+      <AvailabilityCalendar tweaks={tweaks} />
+
+      <SectionTitle title="My lineups" hint={`${myLineups.length} upcoming`} />
+      {myLineups.length === 0
+        ? <div className="empty-state">No lineups assigned yet. Set your availability above and the coach will slot you in.</div>
+        : (
+          <div className="lineups">
+            {myLineups.map(({ session, crew, mySeat }) => (
+              <LineupCard key={crew.id} session={session} crew={crew} mySeat={mySeat} />
+            ))}
+          </div>
+        )
+      }
+    </>
+  );
+}
+
+function LineupCard({ session, crew, mySeat }) {
+  const D = window.RowOrgData;
+  const dateObj = new Date(session.date + 'T00:00:00');
+  const day = dateObj.getDate();
+  const month = D.MONTHS[dateObj.getMonth()];
+  const me = D.ME_ROWER;
+  return (
+    <div className={`lineup ${crew.status}`}>
+      <span className="stripe"></span>
+      <div className="lineup-top">
+        <div className="lineup-date">
+          <span className="d">{day}</span>
+          <span className="m">{month}</span>
+        </div>
+        <div className="lineup-info">
+          <div className="boat">
+            {crew.boat_type}
+            <StatusBadge status={crew.status} />
+          </div>
+          <div className="time">{session.start} – {session.end} · {session.title}</div>
+        </div>
+      </div>
+      {session.description && (
+        <div className="workout">{session.description}</div>
+      )}
+      <div className="seats">
+        {crew.seats.filter(s => !s.is_cox).map(s => {
+          const u = D.findUser(s.rower);
+          return (
+            <div key={s.num} className={`seat-row ${s.rower === me.id ? 'self' : ''}`}>
+              <span className="pos">{s.num === 1 ? 'BOW' : s.num === crew.seats.filter(x=>!x.is_cox).length ? 'STK' : s.num}</span>
+              <span className="name">{u?.first_name} {u?.last_name}</span>
+              <span className="side"><SideTag side={s.side} /></span>
+            </div>
+          );
+        })}
+        {crew.seats.filter(s => s.is_cox).map(s => {
+          const u = D.findUser(s.rower);
+          return (
+            <div key="cox" className={`seat-row ${s.rower === me.id ? 'self' : ''}`}>
+              <span className="pos">COX</span>
+              <span className="name">{u?.first_name} {u?.last_name}</span>
+              <span className="side"><SideTag side="cox" /></span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ============ COACH ============
+function CoachHome({ onOpenSession }) {
+  const D = window.RowOrgData;
+  const sessions = D.SESSIONS;
+
+  const upcomingCount = sessions.length;
+  const totalCrews = sessions.reduce((a, s) => a + s.crews.length, 0);
+  const draftCrews = sessions.reduce((a, s) => a + s.crews.filter(c => c.status === 'draft').length, 0);
+
+  return (
+    <>
+      <div className="page-title">
+        <div>
+          <div className="sub mono">COACH DASHBOARD · LAKE BLED RC</div>
+          <h2>This week's water time</h2>
+        </div>
+        <div className="spacer"></div>
+        <button className="btn"><Icon name="filter" size={13} /> Filter</button>
+        <button className="btn primary"><Icon name="plus" size={13} /> New session</button>
+      </div>
+
+      <div className="metric-row">
+        <div className="metric">
+          <span className="label">Sessions · this wk</span>
+          <span className="val tabular">{upcomingCount}</span>
+          <span className="trend">↑ 1 vs last wk</span>
+        </div>
+        <div className="metric">
+          <span className="label">Crews scheduled</span>
+          <span className="val tabular">{totalCrews}</span>
+          <span className="trend mono muted">{totalCrews - draftCrews} confirmed</span>
+        </div>
+        <div className="metric">
+          <span className="label">Active rowers</span>
+          <span className="val tabular">11 <small>/ 12</small></span>
+          <span className="trend">All available</span>
+        </div>
+        <div className="metric">
+          <span className="label">Drafts awaiting</span>
+          <span className="val tabular" style={{ color: 'var(--warn)' }}>{draftCrews}</span>
+          <span className="trend mono" style={{ color: 'var(--warn)' }}>needs approval</span>
+        </div>
+      </div>
+
+      <SectionTitle title="Scheduled sessions" hint={`${sessions.length} this week`} />
+      <div>
+        {sessions.map(s => <SessionRow key={s.id} session={s} onOpen={() => onOpenSession(s.id)} />)}
+      </div>
+    </>
+  );
+}
+
+function SessionRow({ session, onOpen }) {
+  const D = window.RowOrgData;
+  const dateObj = new Date(session.date + 'T00:00:00');
+  return (
+    <div className="session-row" onClick={onOpen}>
+      <div className="date-block">
+        <div className="d">{dateObj.getDate()}</div>
+        <div className="m">{D.MONTHS[dateObj.getMonth()]}</div>
+      </div>
+      <div className="session-meta">
+        <div className="when mono">{D.DAY_LABELS[session.day]} · {session.start} – {session.end}</div>
+        <div className="title">{session.title}</div>
+        <div className="sub mono" style={{ fontSize: 11, color: 'var(--text-2)', marginTop: 4 }}>
+          {session.description}
+        </div>
+      </div>
+      <div className="crew-pill-row">
+        {session.crews.length === 0
+          ? <span className="crew-pill" style={{ color: 'var(--text-3)' }}>no crew</span>
+          : session.crews.map(c => (
+              <span key={c.id} className={`crew-pill ${c.status === 'confirmed' ? 'confirmed' : c.status === 'draft' ? 'draft' : ''}`}>
+                {c.boat_type}
+              </span>
+            ))
+        }
+      </div>
+      <div className="muted mono" style={{ fontSize: 11 }}>open <Icon name="chevR" size={11} /></div>
+    </div>
+  );
+}
+
+// ============ COACH: SESSION DETAIL ============
+function SessionDetail({ sessionId, onBack, tweaks, setTweaks }) {
+  const D = window.RowOrgData;
+  const [session, setSession] = React.useState(D.SESSIONS.find(s => s.id === sessionId));
+  const suggestions = D.SUGGESTIONS_BY_SESSION[session.id] || [];
+
+  // filters / sort
+  const [filterBoat, setFilterBoat] = React.useState('all');
+  const [sortBy, setSortBy] = React.useState('score');
+
+  const filtered = suggestions
+    .filter(s => filterBoat === 'all' || (filterBoat === 'coxed' ? ['4+','8+'].includes(s.boat_type) : s.boat_type === filterBoat))
+    .sort((a, b) => sortBy === 'score' ? b.score - a.score : a.boat_type.localeCompare(b.boat_type));
+
+  const updateCrewStatus = (crewId, status) => {
+    setSession(s => ({
+      ...s,
+      crews: s.crews.map(c => c.id === crewId ? { ...c, status } : c),
+    }));
+  };
+
+  const dateObj = new Date(session.date + 'T00:00:00');
+
+  return (
+    <>
+      <div className="page-title">
+        <div>
+          <div className="sub mono">
+            <a onClick={onBack} style={{ cursor: 'pointer', color: 'var(--text-2)' }}>
+              <Icon name="chevL" size={11} /> SESSIONS
+            </a>
+            {' · '}
+            <span>{D.DAY_LABELS[session.day]} {dateObj.getDate()} {D.MONTHS[dateObj.getMonth()]} · {session.start}–{session.end}</span>
+          </div>
+          <h2>{session.title}</h2>
+        </div>
+        <div className="spacer"></div>
+        <button className="btn"><Icon name="settings" size={13} /> Edit session</button>
+        <button className="btn primary"><Icon name="bolt" size={13} /> Generate suggestions</button>
+      </div>
+
+      {session.description && (
+        <div className="workout" style={{ marginBottom: 20, maxWidth: 720 }}>
+          <strong>Workout · </strong> {session.description}
+        </div>
+      )}
+
+      <div className="detail-grid">
+        {/* LEFT: assigned crews + builder */}
+        <div>
+          <SectionTitle title="Assigned crews" hint={`${session.crews.length} crew${session.crews.length === 1 ? '' : 's'}`} />
+          {session.crews.length === 0
+            ? <div className="empty-state">No crews assigned yet. Accept a suggestion or build manually below.</div>
+            : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 28 }}>
+                {session.crews.map(crew => (
+                  <CrewCard key={crew.id} crew={crew} updateStatus={updateCrewStatus} />
+                ))}
+              </div>
+            )
+          }
+
+          <SectionTitle
+            title="Crew builder"
+            hint={<>Drag rowers into seats · <span className="kbd">⌘K</span> roster search</>}
+          />
+          <CrewBuilder
+            initialBoat={tweaks.defaultBoat || '8+'}
+            variant={tweaks.builderVariant}
+            onSave={({ variant }) => {
+              if (variant && variant !== tweaks.builderVariant) {
+                setTweaks({ builderVariant: variant });
+              }
+            }}
+          />
+        </div>
+
+        {/* RIGHT: suggestions */}
+        <div>
+          <SectionTitle title="Suggested lineups" hint={`${filtered.length} options`} />
+          <div className="filter-strip">
+            {['all','8+','4+','4x','2-','2x'].map(b => (
+              <button key={b}
+                className={`chip ${filterBoat === b ? 'active' : ''}`}
+                onClick={() => setFilterBoat(b)}>
+                {b === 'all' ? 'All' : b}
+              </button>
+            ))}
+            <div className="spacer"></div>
+            <select className="select" value={sortBy} onChange={e => setSortBy(e.target.value)} style={{ fontSize: 11 }}>
+              <option value="score">Sort: Best fit</option>
+              <option value="boat">Sort: Boat type</option>
+            </select>
+          </div>
+          {filtered.length === 0
+            ? <div className="empty-state" style={{ padding: 24 }}>No suggestions match this filter.</div>
+            : filtered.map(s => <SuggestionCard key={s.id} suggestion={s} />)
+          }
+        </div>
+      </div>
+    </>
+  );
+}
+
+function CrewCard({ crew, updateStatus }) {
+  const D = window.RowOrgData;
+  return (
+    <div className={`lineup ${crew.status}`} style={{ display: 'block' }}>
+      <span className="stripe"></span>
+      <div className="lineup-top" style={{ marginBottom: 8 }}>
+        <div style={{ fontFamily: 'var(--font-mono)', fontSize: 18, fontWeight: 700, color: 'var(--text-0)' }}>
+          {crew.boat_type}
+        </div>
+        <StatusBadge status={crew.status} />
+        <div className="spacer"></div>
+        {crew.status !== 'confirmed' && crew.status !== 'cancelled' && (
+          <button className="btn sm success" onClick={() => updateStatus(crew.id, 'confirmed')}>
+            <Icon name="check" size={11} /> Approve
+          </button>
+        )}
+        {crew.status !== 'cancelled' && (
+          <button className="btn sm danger" onClick={() => updateStatus(crew.id, 'cancelled')}>
+            <Icon name="x" size={11} /> Cancel
+          </button>
+        )}
+      </div>
+      <div className="seats" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', columnGap: 18 }}>
+        {crew.seats.filter(s => !s.is_cox).map(s => {
+          const u = D.findUser(s.rower);
+          return (
+            <div key={s.num} className="seat-row">
+              <span className="pos">{s.num === 1 ? 'BOW' : s.num === crew.seats.filter(x=>!x.is_cox).length ? 'STK' : s.num}</span>
+              <Avatar user={u} size={18} />
+              <span className="name">{u?.first_name} {u?.last_name}</span>
+              <span className="side"><SideTag side={s.side} /></span>
+            </div>
+          );
+        })}
+        {crew.seats.filter(s => s.is_cox).map(s => {
+          const u = D.findUser(s.rower);
+          return (
+            <div key="cox" className="seat-row">
+              <span className="pos">COX</span>
+              <Avatar user={u} size={18} />
+              <span className="name">{u?.first_name} {u?.last_name}</span>
+              <span className="side"><SideTag side="cox" /></span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function SuggestionCard({ suggestion }) {
+  const D = window.RowOrgData;
+  return (
+    <div className="suggestion">
+      <div className="suggestion-top">
+        <span className="boat-tag">{suggestion.boat_type}</span>
+        <span className="muted mono" style={{ fontSize: 11 }}>{suggestion.notes}</span>
+        <div className="score-bar">
+          <span>score</span>
+          <div className="score-fill"><div style={{ width: `${suggestion.score}%` }}></div></div>
+          <span style={{ color: 'var(--text-0)' }}>{suggestion.score}</span>
+        </div>
+      </div>
+      <ul className="crew-list">
+        {suggestion.rowers.map((r, i) => {
+          const u = D.findUser(r.id);
+          return (
+            <li key={i}>
+              <span className="pos">{r.pos}</span>
+              <Avatar user={u} size={18} />
+              <span>{u?.first_name} {u?.last_name}</span>
+              <span className="muted mono" style={{ fontSize: 10, marginLeft: 'auto' }}>
+                {u?.weight ? `${u.weight}kg` : ''}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+      <div style={{ display: 'flex', gap: 6 }}>
+        <button className="btn sm">Preview</button>
+        <button className="btn sm primary"><Icon name="check" size={11} /> Accept</button>
+      </div>
+    </div>
+  );
+}
+
+// ============ shared section title ============
+function SectionTitle({ title, hint }) {
+  return (
+    <div style={{
+      display: 'flex',
+      alignItems: 'baseline',
+      gap: 12,
+      margin: '24px 0 12px',
+      paddingBottom: 8,
+      borderBottom: '1px solid var(--border)',
+    }}>
+      <h3 style={{ margin: 0, fontSize: 13, fontWeight: 600, letterSpacing: '-.01em', textTransform: 'uppercase', fontFamily: 'var(--font-mono)', color: 'var(--text-1)', whiteSpace: 'nowrap' }}>
+        {title}
+      </h3>
+      {hint && <span className="muted" style={{ fontSize: 12 }}>{hint}</span>}
+    </div>
+  );
+}
+
+window.RowerHome = RowerHome;
+window.CoachHome = CoachHome;
+window.SessionDetail = SessionDetail;
+window.SectionTitle = SectionTitle;
+</script>
+<script type="text/babel" data-presets="react">// Secondary pages — full views for each sidebar nav item.
+
+// ============ ROWER: Lineups ============
+function RowerLineups() {
+  const D = window.RowOrgData;
+  const me = D.ME_ROWER;
+  const myLineups = [];
+  D.SESSIONS.forEach(session => {
+    session.crews.forEach(crew => {
+      const mySeat = crew.seats.find(s => s.rower === me.id);
+      if (mySeat) myLineups.push({ session, crew, mySeat });
+    });
+  });
+  const grouped = {
+    confirmed: myLineups.filter(l => l.crew.status === 'confirmed'),
+    draft:     myLineups.filter(l => l.crew.status === 'draft'),
+    cancelled: myLineups.filter(l => l.crew.status === 'cancelled'),
+  };
+
+  return (
+    <>
+      <div className="page-title">
+        <div>
+          <div className="sub mono">YOUR ASSIGNMENTS · {me.first_name.toUpperCase()}</div>
+          <h2>Lineups</h2>
+        </div>
+        <div className="spacer"></div>
+        <button className="btn"><Icon name="filter" size={13} /> Filter</button>
+        <button className="btn"><Icon name="bell" size={13} /> Notify on new</button>
+      </div>
+
+      <div className="metric-row">
+        <div className="metric">
+          <span className="label">Total this week</span>
+          <span className="val tabular">{myLineups.length}</span>
+          <span className="trend muted mono">{grouped.confirmed.length} approved · {grouped.draft.length} draft</span>
+        </div>
+        <div className="metric">
+          <span className="label">Hours on water</span>
+          <span className="val tabular">5.5 <small>h</small></span>
+          <span className="trend">↑ 1.5h vs avg</span>
+        </div>
+        <div className="metric">
+          <span className="label">Most-used boat</span>
+          <span className="val tabular" style={{ fontSize: 20 }}>8+ Eight</span>
+          <span className="trend muted mono">3 of 3 sessions</span>
+        </div>
+        <div className="metric">
+          <span className="label">Streak</span>
+          <span className="val tabular">12 <small>wks</small></span>
+          <span className="trend">🏆 club avg 7</span>
+        </div>
+      </div>
+
+      {grouped.confirmed.length > 0 && (
+        <>
+          <SectionTitle title="Approved" hint={`${grouped.confirmed.length} confirmed lineup${grouped.confirmed.length === 1 ? '' : 's'}`} />
+          <div className="lineups">
+            {grouped.confirmed.map(({ session, crew, mySeat }) => (
+              <LineupCard key={crew.id} session={session} crew={crew} mySeat={mySeat} />
+            ))}
+          </div>
+        </>
+      )}
+      {grouped.draft.length > 0 && (
+        <>
+          <SectionTitle title="Pending" hint={`${grouped.draft.length} awaiting coach approval`} />
+          <div className="lineups">
+            {grouped.draft.map(({ session, crew, mySeat }) => (
+              <LineupCard key={crew.id} session={session} crew={crew} mySeat={mySeat} />
+            ))}
+          </div>
+        </>
+      )}
+      {grouped.cancelled.length > 0 && (
+        <>
+          <SectionTitle title="Cancelled" />
+          <div className="lineups">
+            {grouped.cancelled.map(({ session, crew, mySeat }) => (
+              <LineupCard key={crew.id} session={session} crew={crew} mySeat={mySeat} />
+            ))}
+          </div>
+        </>
+      )}
+
+      {myLineups.length === 0 && (
+        <div className="empty-state">No lineups assigned. Add availability so the coach can slot you in.</div>
+      )}
+    </>
+  );
+}
+
+// ============ ROWER: Availability standalone ============
+function RowerAvailability({ tweaks }) {
+  const D = window.RowOrgData;
+  const totalH = D.MY_AVAIL.reduce((a,s)=>{const [sh,sm]=s.start.split(':').map(Number);const [eh,em]=s.end.split(':').map(Number);return a+((eh-sh)+(em-sm)/60);},0);
+  return (
+    <>
+      <div className="page-title">
+        <div>
+          <div className="sub mono">RECURRING SCHEDULE · WEEK {Math.ceil(D.today.getDate()/7)} OF MAY</div>
+          <h2>Availability</h2>
+        </div>
+        <div className="spacer"></div>
+        <button className="btn"><Icon name="settings" size={13} /> Copy from last week</button>
+        <button className="btn primary"><Icon name="plus" size={13} /> Save week</button>
+      </div>
+
+      <div className="metric-row" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
+        <div className="metric">
+          <span className="label">Hours available</span>
+          <span className="val tabular">{totalH.toFixed(1)} <small>h</small></span>
+          <span className="trend">↑ 2.5h vs last wk</span>
+        </div>
+        <div className="metric">
+          <span className="label">Earliest start</span>
+          <span className="val tabular">06:00</span>
+          <span className="trend muted mono">5× this week</span>
+        </div>
+        <div className="metric">
+          <span className="label">Booked into</span>
+          <span className="val tabular">3 <small>of 4</small></span>
+          <span className="trend">75% utilization</span>
+        </div>
+      </div>
+
+      <p className="muted" style={{ fontSize: 13, lineHeight: 1.5, maxWidth: 620, marginBottom: 20 }}>
+        Drag any cell to paint a time range. Click ✕ on a slot to remove it. Coach can see your slots and the team heatmap together.
+      </p>
+
+      <AvailabilityCalendar tweaks={tweaks} />
+    </>
+  );
+}
+
+// ============ Team Roster ============
+function TeamRoster({ role = 'rower' }) {
+  const D = window.RowOrgData;
+  const [filter, setFilter] = React.useState('all');
+  const list = D.TEAM.filter(u =>
+    filter === 'all' ? true :
+    filter === 'coach' ? u.role === 'coach' :
+    filter === 'cox' ? u.role === 'coxswain' :
+    filter === 'port' ? u.sweep_side === 'port' :
+    filter === 'starboard' ? u.sweep_side === 'starboard' :
+    filter === 'sculler' ? u.rowing_type === 'sculling' || u.rowing_type === 'both' :
+    true
+  );
+
+  return (
+    <>
+      <div className="page-title">
+        <div>
+          <div className="sub mono">LAKE BLED RC · 2026 SQUAD</div>
+          <h2>{role === 'coach' ? 'Roster' : 'Team'}</h2>
+        </div>
+        <div className="spacer"></div>
+        {role === 'coach' && <button className="btn"><Icon name="plus" size={13} /> Invite rower</button>}
+        <button className="btn ghost"><Icon name="search" size={13} /> Search</button>
+      </div>
+
+      <div className="filter-strip">
+        {[
+          ['all','All','12'], ['port','Port','5'], ['starboard','Starboard','5'],
+          ['sculler','Scullers','7'], ['cox','Coxswains','2'], ['coach','Coaches','1'],
+        ].map(([k, l, c]) => (
+          <button key={k} className={`chip ${filter === k ? 'active' : ''}`} onClick={() => setFilter(k)}>
+            {l} <span className="muted mono" style={{ marginLeft: 4, fontSize: 10 }}>{c}</span>
+          </button>
+        ))}
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12 }}>
+        {list.map(u => (
+          <div key={u.id} className="lineup" style={{ padding: 14 }}>
+            <span className="stripe" style={{
+              background: u.tint === 'lime' ? 'var(--lime)' : u.tint === 'water' ? 'var(--water)' : 'var(--accent)'
+            }}></span>
+            <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+              <Avatar user={u} size={44} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontWeight: 600, fontSize: 14, letterSpacing: '-.02em' }}>
+                  {u.first_name} {u.last_name}
+                </div>
+                <div className="muted mono" style={{ fontSize: 11, marginTop: 2, textTransform: 'uppercase', letterSpacing: '.08em' }}>
+                  {u.role}
+                </div>
+              </div>
+            </div>
+            <div style={{
+              display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8,
+              fontSize: 12, marginTop: 4,
+            }}>
+              <div>
+                <div className="muted mono" style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '.1em' }}>Side</div>
+                <div style={{ marginTop: 2 }}>
+                  <SideTag side={u.sweep_side === 'both' ? null : u.sweep_side} />
+                  {u.sweep_side === 'both' && <span className="mono muted">P / S</span>}
+                </div>
+              </div>
+              <div>
+                <div className="muted mono" style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '.1em' }}>Weight</div>
+                <div className="mono tabular" style={{ marginTop: 2 }}>{u.weight ? `${u.weight} kg` : '—'}</div>
+              </div>
+              <div>
+                <div className="muted mono" style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '.1em' }}>Type</div>
+                <div className="mono" style={{ marginTop: 2, textTransform: 'capitalize' }}>{u.rowing_type || '—'}</div>
+              </div>
+              <div>
+                <div className="muted mono" style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '.1em' }}>Cox</div>
+                <div style={{ marginTop: 2 }}>
+                  {u.can_cox
+                    ? <span className="badge water"><span className="b-dot"></span>Yes</span>
+                    : <span className="muted mono" style={{ fontSize: 11 }}>—</span>}
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </>
+  );
+}
+
+// ============ COACH: Sessions standalone (forces a default open) ============
+function CoachSessions({ onOpenSession }) {
+  const D = window.RowOrgData;
+  return (
+    <>
+      <div className="page-title">
+        <div>
+          <div className="sub mono">PRACTICE SCHEDULE · MAY 11 – 17</div>
+          <h2>Sessions</h2>
+        </div>
+        <div className="spacer"></div>
+        <button className="btn"><Icon name="calendar" size={13} /> Week</button>
+        <button className="btn primary"><Icon name="plus" size={13} /> New session</button>
+      </div>
+
+      <p className="muted" style={{ fontSize: 13, lineHeight: 1.5, maxWidth: 620, marginBottom: 16 }}>
+        Each session shows its assigned crews. Click any row to open the suggestions engine and crew builder.
+      </p>
+
+      <SectionTitle title="This week" hint={`${D.SESSIONS.length} scheduled`} />
+      <div>
+        {D.SESSIONS.map(s => <SessionRow key={s.id} session={s} onOpen={() => onOpenSession(s.id)} />)}
+      </div>
+    </>
+  );
+}
+
+// ============ COACH: All Crews ============
+function CoachCrews() {
+  const D = window.RowOrgData;
+  const [status, setStatus] = React.useState('all');
+  const allCrews = D.SESSIONS.flatMap(s => s.crews.map(c => ({ session: s, crew: c })));
+  const filtered = allCrews.filter(({ crew }) => status === 'all' ? true : crew.status === status);
+
+  return (
+    <>
+      <div className="page-title">
+        <div>
+          <div className="sub mono">{allCrews.length} CREW{allCrews.length === 1 ? '' : 'S'} · {allCrews.filter(c=>c.crew.status==='draft').length} NEED APPROVAL</div>
+          <h2>Crews</h2>
+        </div>
+        <div className="spacer"></div>
+        <button className="btn"><Icon name="bolt" size={13} /> Auto-approve drafts</button>
+      </div>
+
+      <div className="filter-strip">
+        {[['all','All'],['confirmed','Confirmed'],['draft','Draft'],['cancelled','Cancelled']].map(([k,l]) => (
+          <button key={k} className={`chip ${status === k ? 'active' : ''}`} onClick={() => setStatus(k)}>
+            {l} <span className="muted mono" style={{ marginLeft: 4, fontSize: 10 }}>
+              {k === 'all' ? allCrews.length : allCrews.filter(c => c.crew.status === k).length}
+            </span>
+          </button>
+        ))}
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))', gap: 12 }}>
+        {filtered.map(({ session, crew }) => (
+          <div key={crew.id} className={`lineup ${crew.status}`} style={{ display: 'block' }}>
+            <span className="stripe"></span>
+            <div className="lineup-top" style={{ marginBottom: 6 }}>
+              <div className="lineup-date">
+                <span className="d">{new Date(session.date+'T00:00:00').getDate()}</span>
+                <span className="m">{D.MONTHS[new Date(session.date+'T00:00:00').getMonth()]}</span>
+              </div>
+              <div className="lineup-info">
+                <div className="boat">{crew.boat_type}<StatusBadge status={crew.status} /></div>
+                <div className="time">{session.start} – {session.end} · {session.title}</div>
+              </div>
+            </div>
+            <div className="seats" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', columnGap: 14 }}>
+              {crew.seats.filter(s => !s.is_cox).map(s => {
+                const u = D.findUser(s.rower);
+                return (
+                  <div key={s.num} className="seat-row">
+                    <span className="pos">{s.num === 1 ? 'BOW' : s.num === crew.seats.filter(x=>!x.is_cox).length ? 'STK' : s.num}</span>
+                    <Avatar user={u} size={16} />
+                    <span className="name" style={{ fontSize: 12 }}>{u?.first_name}</span>
+                  </div>
+                );
+              })}
+              {crew.seats.filter(s => s.is_cox).map(s => {
+                const u = D.findUser(s.rower);
+                return (
+                  <div key="cox" className="seat-row">
+                    <span className="pos">COX</span>
+                    <Avatar user={u} size={16} />
+                    <span className="name" style={{ fontSize: 12 }}>{u?.first_name}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
+    </>
+  );
+}
+
+// ============ COACH: Preferences ============
+function CoachPrefs() {
+  const D = window.RowOrgData;
+  const pairings = [
+    { rowers: [1, 4], boat: '8+', note: 'Solid 7-stroke pair' },
+    { rowers: [3, 6], boat: '4+', note: 'Matched stroke length' },
+    { rowers: [2, 8], boat: 'any', note: 'Keep on starboard' },
+    { rowers: [10, 11], boat: '2x', note: 'Best double scull pairing' },
+  ];
+  const seatPrefs = [
+    { rower: 1, seat: 'Bow', boat: '8+', priority: 'High' },
+    { rower: 8, seat: 'Stroke', boat: '4+/8+', priority: 'High' },
+    { rower: 9, seat: 'Cox', boat: '8+', priority: 'Locked' },
+    { rower: 7, seat: '7', boat: '8+', priority: 'Med' },
+    { rower: 5, seat: '5/6', boat: '8+', priority: 'Med' },
+  ];
+
+  return (
+    <>
+      <div className="page-title">
+        <div>
+          <div className="sub mono">LINEUP RULES · INFORMS THE SUGGESTION ENGINE</div>
+          <h2>Preferences</h2>
+        </div>
+        <div className="spacer"></div>
+        <button className="btn primary"><Icon name="plus" size={13} /> Add rule</button>
+      </div>
+
+      <SectionTitle title="Lineup templates" hint="Full stroke-to-bow lineups. Suggestions use these as starting points; the Crew Builder can load them in one click." />
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 10, marginBottom: 24 }}>
+        {D.TEMPLATES.map(t => {
+          const boat = D.BOAT_TYPES.find(b => b.value === t.boat_type);
+          const stroke = D.findUser(t.lineup[0]);
+          return (
+            <div key={t.id} className="lineup" style={{ display: 'block' }}>
+              <span className="stripe" style={{ background: 'var(--accent)' }}></span>
+              <div className="lineup-top" style={{ marginBottom: 6 }}>
+                <div style={{ fontFamily: 'var(--font-mono)', fontSize: 16, fontWeight: 700, color: 'var(--text-0)' }}>
+                  {t.boat_type}
+                </div>
+                <div className="lineup-info">
+                  <div className="boat" style={{ fontSize: 14 }}>{t.name}</div>
+                  <div className="time">{boat?.label}</div>
+                </div>
+                <button className="btn sm ghost"><Icon name="settings" size={11} /></button>
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--text-2)', marginBottom: 8 }}>{t.note}</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                {/* render stroke first (top) → bow (bottom) */}
+                {t.lineup.map((rid, i) => {
+                  const u = D.findUser(rid);
+                  const isStroke = i === 0;
+                  const isBow = i === t.lineup.length - 1;
+                  const seatLabel = isStroke ? 'STK' : isBow ? 'BOW' : String(boat.seats - i);
+                  const side = boat.value.endsWith('x') ? null : ((boat.seats - i) % 2 === 1 ? 'port' : 'starboard');
+                  return (
+                    <div key={i} className="seat-row" style={{ padding: '2px 0' }}>
+                      <span className="pos">{seatLabel}</span>
+                      <Avatar user={u} size={16} />
+                      <span className="name" style={{ fontSize: 12 }}>{u?.first_name} {u?.last_name?.[0]}.</span>
+                      <span className="side"><SideTag side={side} /></span>
+                    </div>
+                  );
+                })}
+                {t.cox && (() => {
+                  const u = D.findUser(t.cox);
+                  return (
+                    <div className="seat-row" style={{ padding: '2px 0', color: 'var(--water)' }}>
+                      <span className="pos">COX</span>
+                      <Avatar user={u} size={16} />
+                      <span className="name" style={{ fontSize: 12 }}>{u?.first_name} {u?.last_name?.[0]}.</span>
+                    </div>
+                  );
+                })()}
+              </div>
+            </div>
+          );
+        })}
+        {/* Add new template card */}
+        <button className="empty-state" style={{
+          cursor: 'pointer', display: 'flex', flexDirection: 'column',
+          alignItems: 'center', justifyContent: 'center', gap: 6,
+          border: '1px dashed var(--border-strong)', background: 'transparent',
+          color: 'var(--text-2)', minHeight: 180,
+        }}>
+          <Icon name="plus" size={20} />
+          <span style={{ fontSize: 13 }}>New lineup template</span>
+          <span className="muted mono" style={{ fontSize: 10 }}>Stroke → bow</span>
+        </button>
+      </div>
+
+      <div className="detail-grid">
+        <div>
+          <SectionTitle title="Preferred pairings" hint="Keep these rowers together in the same boat" />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {pairings.map((p, i) => (
+              <div key={i} className="suggestion">
+                <div className="suggestion-top">
+                  <span className="boat-tag">{p.boat}</span>
+                  <div style={{ display: 'flex', gap: 6, alignItems: 'center', flex: 1 }}>
+                    {p.rowers.map(rid => {
+                      const u = D.findUser(rid);
+                      return (
+                        <div key={rid} style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                          <Avatar user={u} size={20} />
+                          <span style={{ fontSize: 13, fontWeight: 500 }}>{u?.first_name} {u?.last_name?.[0]}.</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <span className="muted mono" style={{ fontSize: 11 }}>{p.note}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <SectionTitle title="Seat preferences" hint="Where each rower performs best" />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {seatPrefs.map((sp, i) => {
+              const u = D.findUser(sp.rower);
+              return (
+                <div key={i} style={{
+                  display: 'flex', alignItems: 'center', gap: 10,
+                  padding: '10px 12px',
+                  background: 'var(--bg-2)',
+                  border: '1px solid var(--border)',
+                  borderRadius: 'var(--r-md)',
+                }}>
+                  <Avatar user={u} size={26} />
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 13, fontWeight: 500 }}>{u?.first_name} {u?.last_name}</div>
+                    <div className="muted mono" style={{ fontSize: 10 }}>{sp.boat}</div>
+                  </div>
+                  <span className="badge water"><span className="b-dot"></span>{sp.seat}</span>
+                  <span className={`badge ${sp.priority === 'Locked' ? 'coral' : sp.priority === 'High' ? 'lime' : ''}`}>
+                    {sp.priority}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
+// ============ Club: Regattas ============
+function Regattas() {
+  const D = window.RowOrgData;
+  const events = [
+    { date: '2026-05-30', name: 'Bled Spring Sprint',     where: 'Lake Bled, SI',   crews: 4, registered: true,  days: 13 },
+    { date: '2026-06-14', name: 'Danube Cup',             where: 'Vienna, AT',      crews: 2, registered: true,  days: 28 },
+    { date: '2026-07-05', name: 'Adriatic Open',          where: 'Trieste, IT',     crews: 3, registered: false, days: 49 },
+    { date: '2026-08-22', name: 'World Rowing Masters',   where: 'Brandenburg, DE', crews: 1, registered: false, days: 97 },
+  ];
+  return (
+    <>
+      <div className="page-title">
+        <div>
+          <div className="sub mono">UPCOMING · 4 SCHEDULED</div>
+          <h2>Regattas</h2>
+        </div>
+        <div className="spacer"></div>
+        <button className="btn"><Icon name="filter" size={13} /> Past</button>
+        <button className="btn primary"><Icon name="plus" size={13} /> Add regatta</button>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: 12 }}>
+        {events.map((e, i) => {
+          const dt = new Date(e.date + 'T00:00:00');
+          return (
+            <div key={i} className="lineup" style={{ display: 'block' }}>
+              <span className="stripe" style={{ background: e.registered ? 'var(--accent)' : 'var(--text-3)' }}></span>
+              <div className="lineup-top">
+                <div className="lineup-date">
+                  <span className="d">{dt.getDate()}</span>
+                  <span className="m">{D.MONTHS[dt.getMonth()]}</span>
+                </div>
+                <div className="lineup-info">
+                  <div className="boat">{e.name}</div>
+                  <div className="time">{e.where}</div>
+                </div>
+                <div style={{
+                  fontFamily: 'var(--font-mono)', fontWeight: 600, fontSize: 11,
+                  padding: '4px 8px', borderRadius: 6,
+                  background: e.days < 30 ? 'var(--accent-soft)' : 'var(--bg-3)',
+                  color: e.days < 30 ? 'var(--accent)' : 'var(--text-2)',
+                  textTransform: 'uppercase', letterSpacing: '.06em',
+                }}>
+                  {e.days}d
+                </div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
+                {e.registered ? <StatusBadge status="confirmed" /> : <span className="badge"><span className="b-dot"></span>Open</span>}
+                <span className="muted mono" style={{ fontSize: 11 }}>{e.crews} crew{e.crews === 1 ? '' : 's'} entered</span>
+                <div className="spacer"></div>
+                <button className="btn sm">Details</button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </>
+  );
+}
+
+// ============ Club: Equipment ============
+function Equipment() {
+  const boats = [
+    { name: 'Triglav',     type: '8+', material: 'Filippi F35',    year: 2023, status: 'ready',     hours: 412, last: 'Yesterday',  side: null },
+    { name: 'Bohinj',      type: '4+', material: 'Empacher D34',   year: 2021, status: 'ready',     hours: 308, last: '3 days ago', side: null },
+    { name: 'Pivka',       type: '4x', material: 'Filippi F25',    year: 2022, status: 'ready',     hours: 256, last: 'Today',      side: null },
+    { name: 'Soča',        type: '4-', material: 'Vespoli VS-26',  year: 2019, status: 'maintenance', hours: 540, last: '2 weeks',    side: null },
+    { name: 'Sava',        type: '2x', material: 'Hudson R47',     year: 2024, status: 'ready',     hours: 89,  last: 'Yesterday',  side: null },
+    { name: 'Vrbina',      type: '2-', material: 'Empacher D27',   year: 2020, status: 'ready',     hours: 372, last: '5 days ago', side: null },
+    { name: 'Single A',    type: '1x', material: 'Filippi F22',    year: 2024, status: 'ready',     hours: 64,  last: 'Today',      side: null },
+    { name: 'Single B',    type: '1x', material: 'Hudson R47',     year: 2023, status: 'reserved',  hours: 122, last: 'Today',      side: null },
+  ];
+
+  const statusColor = (s) => s === 'ready' ? 'lime' : s === 'maintenance' ? 'warn' : 'water';
+
+  return (
+    <>
+      <div className="page-title">
+        <div>
+          <div className="sub mono">CLUB FLEET · 8 BOATS</div>
+          <h2>Equipment</h2>
+        </div>
+        <div className="spacer"></div>
+        <button className="btn"><Icon name="settings" size={13} /> Log maintenance</button>
+      </div>
+
+      <div className="metric-row" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
+        <div className="metric">
+          <span className="label">Ready</span>
+          <span className="val tabular">6</span>
+          <span className="trend">All systems go</span>
+        </div>
+        <div className="metric">
+          <span className="label">In maintenance</span>
+          <span className="val tabular" style={{ color: 'var(--warn)' }}>1</span>
+          <span className="trend mono" style={{ color: 'var(--warn)' }}>Soča · back Fri</span>
+        </div>
+        <div className="metric">
+          <span className="label">Reserved</span>
+          <span className="val tabular">1</span>
+          <span className="trend muted mono">today</span>
+        </div>
+        <div className="metric">
+          <span className="label">Total hrs · YTD</span>
+          <span className="val tabular">2,163 <small>h</small></span>
+          <span className="trend">↑ 8% vs '25</span>
+        </div>
+      </div>
+
+      <SectionTitle title="Fleet" hint="8 hulls" />
+      <div className="card">
+        <div style={{ padding: '8px 16px', borderBottom: '1px solid var(--border)',
+                      display: 'grid', gridTemplateColumns: '56px 1fr 80px 1fr 110px 100px 100px',
+                      gap: 12, fontFamily: 'var(--font-mono)', fontSize: 10,
+                      textTransform: 'uppercase', letterSpacing: '.1em',
+                      color: 'var(--text-2)' }}>
+          <div>Type</div><div>Name</div><div>Year</div><div>Shell</div><div>Hours</div><div>Last use</div><div>Status</div>
+        </div>
+        {boats.map((b, i) => (
+          <div key={i} style={{
+            padding: '10px 16px', borderBottom: i === boats.length - 1 ? 'none' : '1px solid var(--border)',
+            display: 'grid', gridTemplateColumns: '56px 1fr 80px 1fr 110px 100px 100px',
+            gap: 12, alignItems: 'center', fontSize: 13,
+          }}>
+            <span className="mono" style={{ fontWeight: 700, fontSize: 15, letterSpacing: '-.02em' }}>{b.type}</span>
+            <span style={{ fontWeight: 600 }}>{b.name}</span>
+            <span className="muted mono" style={{ fontSize: 11 }}>{b.year}</span>
+            <span className="muted" style={{ fontSize: 12 }}>{b.material}</span>
+            <span className="mono tabular">{b.hours}h</span>
+            <span className="muted mono" style={{ fontSize: 11 }}>{b.last}</span>
+            <span className={`badge ${statusColor(b.status)}`}><span className="b-dot"></span>{b.status}</span>
+          </div>
+        ))}
+      </div>
+    </>
+  );
+}
+
+window.RowerLineups = RowerLineups;
+window.RowerAvailability = RowerAvailability;
+window.TeamRoster = TeamRoster;
+window.CoachSessions = CoachSessions;
+window.CoachCrews = CoachCrews;
+window.CoachPrefs = CoachPrefs;
+window.Regattas = Regattas;
+window.Equipment = Equipment;
+</script>
+<script type="text/babel" data-presets="react">// Coach "Plan" page — team availability heatmap with click-to-create-session.
+
+const PLAN_HOUR_START = 5;
+const PLAN_HOUR_END   = 21;
+const PLAN_ROW_PX     = 18;
+const PLAN_TOTAL_ROWS = (PLAN_HOUR_END - PLAN_HOUR_START) * 2;
+
+function planTimeToRow(t) {
+  const [h, m] = t.split(':').map(Number);
+  return (h - PLAN_HOUR_START) * 2 + (m >= 30 ? 1 : 0);
+}
+function planRowToTime(r) {
+  const minutes = PLAN_HOUR_START * 60 + r * 30;
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+}
+
+// Returns the count of rowers available at (day, row) from TEAM_HEATMAP
+function planCountAt(D, day, row) {
+  for (const h of D.TEAM_HEATMAP) {
+    if (h.day !== day) continue;
+    const a = planTimeToRow(h.start);
+    const b = planTimeToRow(h.end);
+    if (row >= a && row < b) return h.count;
+  }
+  return 0;
+}
+
+function CoachPlan({ onOpenSession }) {
+  const D = window.RowOrgData;
+  const [weekOffset, setWeekOffset] = React.useState(0);
+  const [drag, setDrag] = React.useState(null);
+  const [draft, setDraft] = React.useState(null); // {day, startRow, endRow}
+  const [sessions, setSessions] = React.useState(() => D.SESSIONS.map(s => ({ ...s })));
+  const [workout, setWorkout] = React.useState('');
+
+  const weekStart = new Date(D.WEEK_START);
+  weekStart.setDate(weekStart.getDate() + weekOffset * 7);
+  const weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekEnd.getDate() + 6);
+
+  const todayIdx = (() => {
+    if (weekOffset !== 0) return -1;
+    const d = D.today.getDay();
+    return d === 0 ? 6 : d - 1;
+  })();
+
+  const dayInfo = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(weekStart);
+    d.setDate(d.getDate() + i);
+    return {
+      label: D.DAY_LABELS_SHORT[i],
+      num: d.getDate(),
+      month: D.MONTHS[d.getMonth()],
+      isToday: i === todayIdx,
+      iso: d.toISOString().split('T')[0],
+    };
+  });
+
+  const sessionsThisWeek = sessions.filter(s => {
+    const sd = new Date(s.date + 'T00:00:00');
+    const diff = (sd - weekStart) / 86400000;
+    return diff >= 0 && diff < 7;
+  }).map(s => ({ ...s, day: Math.floor((new Date(s.date + 'T00:00:00') - weekStart) / 86400000) }));
+
+  const onCellDown = (day, row, e) => {
+    e.preventDefault();
+    setDrag({ day, startRow: row, endRow: row });
+    setDraft(null);
+  };
+  const onCellEnter = (day, row) => {
+    if (drag && drag.day === day) setDrag(d => ({ ...d, endRow: row }));
+  };
+  const onMouseUp = () => {
+    if (!drag) return;
+    const a = Math.min(drag.startRow, drag.endRow);
+    const b = Math.max(drag.startRow, drag.endRow) + 1;
+    if (b - a >= 1) setDraft({ day: drag.day, startRow: a, endRow: b });
+    setDrag(null);
+  };
+
+  React.useEffect(() => {
+    if (!drag) return;
+    window.addEventListener('mouseup', onMouseUp);
+    return () => window.removeEventListener('mouseup', onMouseUp);
+  });
+
+  const createFromDraft = () => {
+    if (!draft) return;
+    const info = dayInfo[draft.day];
+    const newId = Math.max(...sessions.map(s => s.id)) + 1;
+    const next = {
+      id: newId,
+      date: info.iso,
+      day: draft.day,
+      start: planRowToTime(draft.startRow),
+      end: planRowToTime(draft.endRow),
+      title: workout || 'Practice',
+      description: workout || '',
+      crews: [],
+    };
+    setSessions(prev => [...prev, next]);
+    setDraft(null);
+    setWorkout('');
+  };
+
+  const monthRange = (() => {
+    const a = `${D.MONTHS[weekStart.getMonth()]} ${weekStart.getDate()}`;
+    const b = weekStart.getMonth() === weekEnd.getMonth()
+      ? weekEnd.getDate()
+      : `${D.MONTHS[weekEnd.getMonth()]} ${weekEnd.getDate()}`;
+    return `${a} – ${b}`;
+  })();
+
+  // Stats
+  const peak = (() => {
+    let max = 0, when = null;
+    for (let d = 0; d < 7; d++) {
+      for (let r = 0; r < PLAN_TOTAL_ROWS; r++) {
+        const c = planCountAt(D, d, r);
+        if (c > max) { max = c; when = { day: d, row: r }; }
+      }
+    }
+    return { count: max, when };
+  })();
+
+  return (
+    <>
+      <div className="page-title">
+        <div>
+          <div className="sub mono">PLAN FROM TEAM AVAILABILITY · {monthRange.toUpperCase()}</div>
+          <h2>Plan sessions</h2>
+        </div>
+        <div className="spacer"></div>
+        <button className="btn"><Icon name="filter" size={13} /> Min rowers</button>
+        <button className="btn primary"><Icon name="plus" size={13} /> Quick add</button>
+      </div>
+
+      <div className="metric-row" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
+        <div className="metric">
+          <span className="label">Best availability</span>
+          <span className="val tabular" style={{ color: 'var(--lime)' }}>{peak.count}<small>/12</small></span>
+          <span className="trend muted mono">
+            {peak.when ? `${D.DAY_LABELS_SHORT[peak.when.day]} ${planRowToTime(peak.when.row)}` : '—'}
+          </span>
+        </div>
+        <div className="metric">
+          <span className="label">Already scheduled</span>
+          <span className="val tabular">{sessionsThisWeek.length}</span>
+          <span className="trend muted mono">{sessionsThisWeek.reduce((a,s)=>a+s.crews.length,0)} crews</span>
+        </div>
+        <div className="metric">
+          <span className="label">Avg available · 06:00</span>
+          <span className="val tabular">8.6<small>/12</small></span>
+          <span className="trend">strong morning squad</span>
+        </div>
+        <div className="metric">
+          <span className="label">Coverage</span>
+          <span className="val tabular">72<small>%</small></span>
+          <span className="trend muted mono">team-wide this wk</span>
+        </div>
+      </div>
+
+      <p className="muted" style={{ fontSize: 13, lineHeight: 1.5, maxWidth: 720, marginBottom: 14 }}>
+        Heatmap shows how many rowers are free in each half-hour. <b style={{ color: 'var(--text-0)' }}>Drag across empty cells</b> to draft a session at that time — coverage will be highest where the green is most intense.
+      </p>
+
+      <div className="avail">
+        <div className="avail-head">
+          <div className="week">
+            <button onClick={() => setWeekOffset(o => o - 1)}><Icon name="chevL" size={14} /></button>
+            <span className="week-label">{monthRange}</span>
+            <button onClick={() => setWeekOffset(o => o + 1)}><Icon name="chevR" size={14} /></button>
+          </div>
+          <button className="btn ghost sm" onClick={() => setWeekOffset(0)}>Today</button>
+          <div className="legend">
+            <span className="legend-key">
+              <span className="legend-swatch" style={{ background: 'linear-gradient(90deg, var(--bg-2), var(--lime))' }}></span>
+              Team available
+            </span>
+            <span className="legend-key"><span className="legend-swatch session"></span>Existing practice</span>
+            <span className="legend-key"><span className="legend-swatch" style={{ background: 'var(--accent-soft)', border: '1px dashed var(--accent)' }}></span>Drafting</span>
+          </div>
+        </div>
+
+        <div className="avail-grid-wrap">
+          <div className="avail-grid" style={{ position: 'relative' }}>
+            <div className="col time-col">
+              <div className="col-head">&nbsp;</div>
+              {Array.from({ length: PLAN_TOTAL_ROWS }, (_, r) => (
+                <div key={r} className={`time-cell ${r % 2 === 1 ? 'half' : ''}`}>
+                  {r % 2 === 0 ? `${String(PLAN_HOUR_START + r/2).padStart(2,'0')}:00` : ''}
+                </div>
+              ))}
+            </div>
+
+            {dayInfo.map((info, dayIdx) => {
+              const daySessions = sessionsThisWeek.filter(s => s.day === dayIdx);
+              return (
+                <div key={dayIdx} className={`col ${info.isToday ? 'today-col' : ''}`}>
+                  <div className={`col-head ${info.isToday ? 'today' : ''}`}>
+                    {info.label}<span className="day-num">{info.num}</span>
+                  </div>
+
+                  {Array.from({ length: PLAN_TOTAL_ROWS }, (_, r) => {
+                    const count = planCountAt(D, dayIdx, r);
+                    const intensity = Math.min(1, count / 12);
+                    const bg = count > 0
+                      ? `rgba(182, 240, 106, ${0.08 + intensity * 0.32})`
+                      : 'transparent';
+                    return (
+                      <div
+                        key={r}
+                        className={`slot-cell ${r % 2 === 1 ? 'half' : ''}`}
+                        style={{ background: bg }}
+                        onMouseDown={(e) => onCellDown(dayIdx, r, e)}
+                        onMouseEnter={() => onCellEnter(dayIdx, r)}
+                        title={count > 0 ? `${count}/12 available` : ''}
+                      />
+                    );
+                  })}
+
+                  {/* count labels on each contiguous range from TEAM_HEATMAP */}
+                  {D.TEAM_HEATMAP.filter(h => h.day === dayIdx).map((h, i) => {
+                    const a = planTimeToRow(h.start), b = planTimeToRow(h.end);
+                    return (
+                      <div key={'lbl'+i} style={{
+                        position: 'absolute',
+                        top: 32 + a * PLAN_ROW_PX + 2,
+                        // approximate column position by parent col; using transform via parent col makes this a child positioned absolutely inside col
+                        left: 4,
+                        fontFamily: 'var(--font-mono)',
+                        fontSize: 10,
+                        color: 'var(--lime)',
+                        opacity: 0.9,
+                        pointerEvents: 'none',
+                        zIndex: 1,
+                      }}>
+                        {h.count}/12
+                      </div>
+                    );
+                  })}
+
+                  {/* existing sessions */}
+                  {daySessions.map(s => {
+                    const a = planTimeToRow(s.start), b = planTimeToRow(s.end);
+                    return (
+                      <div
+                        key={s.id}
+                        className="slot session"
+                        style={{ top: 32 + a * PLAN_ROW_PX, height: (b - a) * PLAN_ROW_PX - 2, cursor: 'pointer' }}
+                        onClick={() => onOpenSession && onOpenSession(s.id)}
+                      >
+                        <span>{s.title}</span>
+                        <span className="slot-time">{s.start} – {s.end}</span>
+                      </div>
+                    );
+                  })}
+
+                  {/* drag preview */}
+                  {drag && drag.day === dayIdx && (() => {
+                    const a = Math.min(drag.startRow, drag.endRow);
+                    const b = Math.max(drag.startRow, drag.endRow) + 1;
+                    return (
+                      <div className="slot drafting"
+                           style={{ top: 32 + a * PLAN_ROW_PX, height: (b - a) * PLAN_ROW_PX - 2 }}>
+                        <span>New session</span>
+                        <span className="slot-time">{planRowToTime(a)} – {planRowToTime(b)}</span>
+                      </div>
+                    );
+                  })()}
+
+                  {/* committed draft */}
+                  {draft && draft.day === dayIdx && (
+                    <div className="slot drafting"
+                         style={{ top: 32 + draft.startRow * PLAN_ROW_PX, height: (draft.endRow - draft.startRow) * PLAN_ROW_PX - 2 }}>
+                      <span>Drafting…</span>
+                      <span className="slot-time">{planRowToTime(draft.startRow)} – {planRowToTime(draft.endRow)}</span>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* draft session form */}
+      {draft && (
+        <div style={{
+          position: 'sticky', bottom: 16, marginTop: 16,
+          background: 'var(--bg-2)', border: '1px solid var(--accent)',
+          borderRadius: 'var(--r-lg)', padding: 16,
+          display: 'flex', alignItems: 'center', gap: 12,
+          boxShadow: '0 12px 32px -8px rgba(0,0,0,.5)',
+          zIndex: 5,
+        }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div className="mono" style={{ fontSize: 11, color: 'var(--text-2)', textTransform: 'uppercase', letterSpacing: '.08em' }}>
+              New session draft
+            </div>
+            <div style={{ marginTop: 4, fontSize: 15, fontWeight: 600 }}>
+              {D.DAY_LABELS[draft.day]} · {planRowToTime(draft.startRow)} – {planRowToTime(draft.endRow)}
+            </div>
+            <div className="muted mono" style={{ fontSize: 11, marginTop: 2 }}>
+              {planCountAt(D, draft.day, draft.startRow)}/12 rowers available at this time
+            </div>
+          </div>
+          <input
+            type="text"
+            className="select"
+            placeholder="Workout (e.g. 6×8 min @ rate 20)"
+            value={workout}
+            onChange={(e) => setWorkout(e.target.value)}
+            style={{ width: 320, fontSize: 13 }}
+          />
+          <button className="btn ghost" onClick={() => { setDraft(null); setWorkout(''); }}>
+            Cancel
+          </button>
+          <button className="btn primary" onClick={createFromDraft}>
+            <Icon name="check" size={13} /> Create session
+          </button>
+        </div>
+      )}
+    </>
+  );
+}
+
+window.CoachPlan = CoachPlan;
+</script>
+<script type="text/babel" data-presets="react">// App shell — sidebar, role switcher, top bar, page router, tweaks
+
+const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+  "role": "rower",
+  "palette": "default",
+  "density": "default",
+  "builderVariant": "boat",
+  "defaultBoat": "8+",
+  "showTeamHeatmap": true,
+  "primary": "#ff5d3a"
+}/*EDITMODE-END*/;
+
+function App() {
+  const [tweaks, setTweaks] = useTweaks(TWEAK_DEFAULTS);
+  const [view, setView] = React.useState({ page: 'rower-home' });
+  const [navItem, setNavItem] = React.useState('home');
+
+  // Apply tweakable palette tweaks via CSS variables / classes
+  const appClass = [
+    'app',
+    tweaks.density === 'compact' ? 'dense' : '',
+    tweaks.density === 'airy' ? 'airy' : '',
+    tweaks.palette === 'warm' ? 'warm' : '',
+    tweaks.palette === 'lake' ? 'lake' : '',
+  ].filter(Boolean).join(' ');
+
+  // primary accent override
+  const styleVars = tweaks.primary ? { '--accent': tweaks.primary, '--accent-press': shade(tweaks.primary, -12), '--accent-soft': tweaks.primary + '26' } : {};
+
+  const role = tweaks.role || 'rower';
+
+  // Role switch
+  const setRole = (r) => {
+    setTweaks('role', r);
+    setView({ page: r === 'rower' ? 'rower-home' : 'coach-home' });
+    setNavItem('home');
+  };
+
+  const openSession = (id) => {
+    setView({ page: 'session-detail', sessionId: id });
+    setNavItem('sessions');
+  };
+
+  // Nav handling per role
+  const handleNav = (key) => {
+    setNavItem(key);
+    if (role === 'rower') {
+      const map = {
+        home: 'rower-home',
+        lineups: 'rower-lineups',
+        availability: 'rower-availability',
+        team: 'team-roster',
+        regattas: 'regattas',
+      };
+      setView({ page: map[key] || 'rower-home' });
+    } else {
+      const map = {
+        home: 'coach-home',
+        sessions: 'coach-sessions',
+        plan: 'coach-plan',
+        crews: 'coach-crews',
+        team: 'team-roster',
+        prefs: 'coach-prefs',
+        regattas: 'regattas',
+      };
+      setView({ page: map[key] || 'coach-home' });
+    }
+  };
+
+  return (
+    <div className={appClass} style={styleVars} data-screen-label={`${role} · ${view.page}`}>
+      <Sidebar role={role} navItem={navItem} onNav={handleNav} onRole={setRole} />
+
+      <main className="main">
+        <TopBar view={view} role={role} setRole={setRole} />
+        <div className="content">
+          {role === 'rower' && view.page === 'rower-home'        && <RowerHome tweaks={tweaks} />}
+          {role === 'rower' && view.page === 'rower-lineups'     && <RowerLineups />}
+          {role === 'rower' && view.page === 'rower-availability'&& <RowerAvailability tweaks={tweaks} />}
+          {view.page === 'team-roster' && <TeamRoster role={role} />}
+          {view.page === 'regattas'    && <Regattas />}
+          {role === 'coach' && view.page === 'coach-home'     && <CoachHome onOpenSession={openSession} />}
+          {role === 'coach' && view.page === 'coach-sessions' && <CoachSessions onOpenSession={openSession} />}
+          {role === 'coach' && view.page === 'coach-plan'     && <CoachPlan onOpenSession={openSession} />}
+          {role === 'coach' && view.page === 'coach-crews'    && <CoachCrews />}
+          {role === 'coach' && view.page === 'coach-prefs'    && <CoachPrefs />}
+          {role === 'coach' && view.page === 'session-detail' && (
+            <SessionDetail
+              sessionId={view.sessionId}
+              onBack={() => { setView({ page: 'coach-sessions' }); setNavItem('sessions'); }}
+              tweaks={tweaks}
+              setTweaks={(patch) => setTweaks(patch)}
+            />
+          )}
+        </div>
+      </main>
+
+      <MobileTabs role={role} navItem={navItem} onNav={handleNav} />
+
+      <TweaksPanel title="Tweaks">
+        <TweakSection label="Role">
+          <TweakRadio
+            value={tweaks.role}
+            onChange={(v) => setRole(v)}
+            options={[
+              { value: 'rower', label: 'Rower' },
+              { value: 'coach', label: 'Coach' },
+            ]}
+          />
+        </TweakSection>
+
+        <TweakSection label="Palette">
+          <TweakRadio
+            value={tweaks.palette}
+            onChange={(v) => setTweaks('palette', v)}
+            options={[
+              { value: 'default', label: 'Slate' },
+              { value: 'lake', label: 'Lake' },
+              { value: 'warm', label: 'Dusk' },
+            ]}
+          />
+          <TweakColor
+            label="Primary accent"
+            value={tweaks.primary}
+            onChange={(v) => setTweaks('primary', v)}
+            options={['#ff5d3a','#ff9100','#b6f06a','#66a7ff','#e94560','#a47cff']}
+          />
+        </TweakSection>
+
+        <TweakSection label="Density">
+          <TweakRadio
+            value={tweaks.density}
+            onChange={(v) => setTweaks('density', v)}
+            options={[
+              { value: 'compact', label: 'Compact' },
+              { value: 'default', label: 'Default' },
+              { value: 'airy', label: 'Airy' },
+            ]}
+          />
+        </TweakSection>
+
+        <TweakSection label="Crew builder">
+          <TweakRadio
+            value={tweaks.builderVariant}
+            onChange={(v) => setTweaks('builderVariant', v)}
+            options={[
+              { value: 'boat', label: 'Hull' },
+              { value: 'abstract', label: 'List' },
+            ]}
+          />
+          <TweakSelect
+            label="Default boat"
+            value={tweaks.defaultBoat}
+            onChange={(v) => setTweaks('defaultBoat', v)}
+            options={[
+              { value: '1x', label: '1× Single' },
+              { value: '2x', label: '2× Double' },
+              { value: '2-', label: '2− Pair' },
+              { value: '4x', label: '4× Quad' },
+              { value: '4-', label: '4− Four' },
+              { value: '4+', label: '4+ Coxed four' },
+              { value: '8+', label: '8+ Eight' },
+            ]}
+          />
+        </TweakSection>
+
+        <TweakSection label="Availability">
+          <TweakToggle
+            label="Show team heatmap"
+            value={tweaks.showTeamHeatmap}
+            onChange={(v) => setTweaks('showTeamHeatmap', v)}
+          />
+        </TweakSection>
+      </TweaksPanel>
+    </div>
+  );
+}
+
+function Sidebar({ role, navItem, onNav, onRole }) {
+  const D = window.RowOrgData;
+  const me = role === 'rower' ? D.ME_ROWER : D.ME_COACH;
+
+  const rowerNav = [
+    { key: 'home',         label: 'Home',          icon: 'home' },
+    { key: 'lineups',      label: 'Lineups',       icon: 'boat',     count: 3 },
+    { key: 'availability', label: 'Availability',  icon: 'calendar' },
+    { key: 'team',         label: 'Team',          icon: 'users' },
+  ];
+  const coachNav = [
+    { key: 'home',     label: 'Overview',  icon: 'home' },
+    { key: 'sessions', label: 'Sessions',  icon: 'calendar', count: 4 },
+    { key: 'plan',     label: 'Plan',      icon: 'bolt' },
+    { key: 'crews',    label: 'Crews',     icon: 'boat',     count: 3 },
+    { key: 'team',     label: 'Roster',    icon: 'users',    count: 12 },
+    { key: 'prefs',    label: 'Preferences', icon: 'settings' },
+  ];
+  const items = role === 'rower' ? rowerNav : coachNav;
+
+  return (
+    <aside className="sidebar">
+      <div className="brand">
+        <div className="brand-mark">R</div>
+        <div className="brand-name">roworg<span>.</span></div>
+      </div>
+
+      <div className="nav-group">
+        <div className="nav-label">{role === 'rower' ? 'You' : 'Coaching'}</div>
+        {items.map(item => (
+          <button key={item.key} className={`nav-item ${navItem === item.key ? 'active' : ''}`} onClick={() => onNav(item.key)}>
+            <span className="nav-dot"></span>
+            <Icon name={item.icon} size={14} />
+            <span>{item.label}</span>
+            {item.count != null && <span className="nav-count">{item.count}</span>}
+          </button>
+        ))}
+      </div>
+
+      <div className="nav-group">
+        <div className="nav-label">Club</div>
+        <button className={`nav-item ${navItem === 'regattas' ? 'active' : ''}`} onClick={() => onNav('regattas')}><span className="nav-dot"></span><Icon name="trophy" size={14} /><span>Regattas</span></button>
+      </div>
+
+      <div className="role-switch" style={{ marginTop: 'auto' }}>
+        <span className={`role-pill ${role === 'coach' ? 'right' : ''}`}></span>
+        <button className={`role-btn ${role === 'rower' ? 'active' : ''}`} onClick={() => onRole('rower')}>
+          Rower
+        </button>
+        <button className={`role-btn ${role === 'coach' ? 'active' : ''}`} onClick={() => onRole('coach')}>
+          Coach
+        </button>
+      </div>
+
+      <div className="profile">
+        <Avatar user={me} size={32} />
+        <div className="profile-meta">
+          <div className="name">{me.first_name} {me.last_name}</div>
+          <div className="sub">Lake Bled RC · {role === 'coach' ? 'Head coach' : me.sweep_side?.toUpperCase()}</div>
+        </div>
+      </div>
+    </aside>
+  );
+}
+
+function TopBar({ view, role, setRole }) {
+  return (
+    <div className="topbar">
+      <div className="crumb">
+        <b>{role === 'rower' ? 'Rower' : 'Coach'}</b>
+        {' / '}
+        <span>{titleFor(view, role)}</span>
+      </div>
+      <div className="spacer"></div>
+      <button className="btn ghost icon" title="Search"><Icon name="search" size={14} /></button>
+      <button className="btn ghost icon" title="Notifications"><Icon name="bell" size={14} /></button>
+      <span className="kbd">⌘K</span>
+    </div>
+  );
+}
+
+function MobileTabs({ role, navItem, onNav }) {
+  const items = role === 'rower'
+    ? [
+        { key: 'home',         label: 'Home',     icon: 'home' },
+        { key: 'lineups',      label: 'Lineups',  icon: 'boat' },
+        { key: 'availability', label: 'Calendar', icon: 'calendar' },
+        { key: 'team',         label: 'Team',     icon: 'users' },
+      ]
+    : [
+        { key: 'home',     label: 'Overview', icon: 'home' },
+        { key: 'sessions', label: 'Sessions', icon: 'calendar' },
+        { key: 'crews',    label: 'Crews',    icon: 'boat' },
+        { key: 'team',     label: 'Roster',   icon: 'users' },
+      ];
+  return (
+    <nav className="mobile-tabs">
+      {items.map(it => (
+        <button key={it.key} className={`mtab ${navItem === it.key ? 'active' : ''}`} onClick={() => onNav(it.key)}>
+          <Icon name={it.icon} size={18} />
+          <span>{it.label}</span>
+          <span className="mdot"></span>
+        </button>
+      ))}
+    </nav>
+  );
+}
+
+function titleFor(view, role) {
+  const map = {
+    'rower-home': 'Home',
+    'rower-lineups': 'Lineups',
+    'rower-availability': 'Availability',
+    'team-roster': role === 'coach' ? 'Roster' : 'Team',
+    'regattas': 'Regattas',
+    'coach-home': 'Overview',
+    'coach-sessions': 'Sessions',
+    'coach-plan': 'Plan',
+    'coach-crews': 'Crews',
+    'coach-prefs': 'Preferences',
+    'session-detail': 'Session detail',
+  };
+  return map[view.page] || 'Home';
+}
+
+// shade hex color (negative=darker)
+function shade(hex, amount) {
+  const c = hex.replace('#','');
+  const r = parseInt(c.slice(0,2),16);
+  const g = parseInt(c.slice(2,4),16);
+  const b = parseInt(c.slice(4,6),16);
+  const adj = (v) => Math.max(0, Math.min(255, v + Math.round(amount * 2.55)));
+  return '#' + [adj(r),adj(g),adj(b)].map(v => v.toString(16).padStart(2,'0')).join('');
+}
+
+window.App = App;
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body></html>

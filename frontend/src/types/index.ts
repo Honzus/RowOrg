@@ -12,6 +12,13 @@ export interface User {
   weight: number | null;
 }
 
+export interface UserMinimal {
+  id: number;
+  email: string;
+  first_name: string;
+  last_name: string;
+}
+
 export interface Team {
   id: string;
   name: string;
@@ -79,9 +86,55 @@ export interface CrewSuggestion {
   boat_type: string;
   rowers: { id: number; name: string; email: string }[];
   score: number;
+  source?: 'template' | 'constraint' | 'manual';
+  template_id?: number;
+  template_name?: string;
+  missing_from_template?: number[];
 }
 
 export interface SuggestionResponse {
   suggestions: CrewSuggestion[];
   available_coxswains: { id: number; name: string; email: string }[];
+}
+
+export interface LineupTemplateSeatDetail {
+  position: number;
+  rower: number;
+  rower_detail?: UserMinimal;
+}
+
+export interface LineupTemplate {
+  id: number;
+  team: string;
+  name: string;
+  boat_type: string;
+  lineup: number[];
+  seats: LineupTemplateSeatDetail[];
+  cox: number | null;
+  cox_detail?: UserMinimal | null;
+  note: string;
+  created_by: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Regatta {
+  id: number;
+  team: string;
+  name: string;
+  date: string;
+  location: string;
+  registered: boolean;
+  crews_entered: number;
+  note: string;
+  created_by: number;
+  created_at: string;
+}
+
+export interface TeamAvailabilityBlock {
+  day_of_week: number;
+  start_time: string;
+  end_time: string;
+  count: number;
+  rower_ids?: number[];
 }

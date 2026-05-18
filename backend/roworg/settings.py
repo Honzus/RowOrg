@@ -26,6 +26,7 @@ INSTALLED_APPS = [
     'training_sessions',
     'suggestions',
     'preferences',
+    'regattas',
 ]
 
 MIDDLEWARE = [

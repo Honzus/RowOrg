@@ -1,91 +1,115 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { updateProfile } from '../api/auth';
+import { useUser } from '../hooks/userContext';
 import type { User } from '../types';
 
-interface Props {
-  user: User;
-  onComplete: () => void;
-}
-
-export default function ProfileSetup({ user, onComplete }: Props) {
-  const [role, setRole] = useState(user.role || '');
-  const [rowingType, setRowingType] = useState(user.rowing_type || '');
-  const [sweepSide, setSweepSide] = useState(user.sweep_side || '');
-  const [canCox, setCanCox] = useState(user.can_cox);
-  const [weight, setWeight] = useState(user.weight?.toString() || '');
+export default function ProfileSetup() {
+  const { user, reload } = useUser();
+  const navigate = useNavigate();
+  const [role, setRole] = useState<User['role']>(user?.role || '');
+  const [rowingType, setRowingType] = useState<User['rowing_type']>(user?.rowing_type || '');
+  const [sweepSide, setSweepSide] = useState<User['sweep_side']>(user?.sweep_side || '');
+  const [canCox, setCanCox] = useState(user?.can_cox || false);
+  const [weight, setWeight] = useState(user?.weight?.toString() || '');
   const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
+    setBusy(true);
     try {
       await updateProfile({
-        role: role as User['role'],
-        rowing_type: rowingType as User['rowing_type'],
-        sweep_side: sweepSide as User['sweep_side'],
+        role,
+        rowing_type: rowingType,
+        sweep_side: sweepSide,
         can_cox: canCox,
         weight: weight ? parseFloat(weight) : null,
       });
-      onComplete();
+      await reload();
+      navigate('/home');
     } catch {
       setError('Failed to update profile');
+    } finally {
+      setBusy(false);
     }
   };
 
   return (
-    <div className="setup-page">
-      <h2>Complete Your Profile</h2>
-      {error && <p className="error">{error}</p>}
-      <form onSubmit={handleSubmit}>
-        <label>
-          Role:
-          <select value={role} onChange={e => setRole(e.target.value)} required>
-            <option value="">Select...</option>
-            <option value="coach">Coach</option>
-            <option value="oarsman">Oarsman</option>
-            <option value="coxswain">Coxswain</option>
-          </select>
-        </label>
+    <div className="auth-page">
+      <div className="auth-card" style={{ maxWidth: 480 }}>
+        <h1>Complete your profile</h1>
+        <p className="sub">Tells the coach (and the suggestion engine) what boat seats you can take.</p>
+        {error && <div className="error-msg">{error}</div>}
+        <form onSubmit={handleSubmit}>
+          <div className="field">
+            <label className="field-label">Role</label>
+            <select className="input" value={role} onChange={(e) => setRole(e.target.value as User['role'])} required>
+              <option value="">Select…</option>
+              <option value="coach">Coach</option>
+              <option value="oarsman">Oarsman</option>
+              <option value="coxswain">Coxswain</option>
+            </select>
+          </div>
 
-        {(role === 'oarsman' || role === 'coxswain') && (
-          <>
-            <label>
-              Rowing Type:
-              <select value={rowingType} onChange={e => setRowingType(e.target.value)}>
-                <option value="">Select...</option>
-                <option value="sculling">Sculling</option>
-                <option value="sweeping">Sweeping</option>
-                <option value="both">Both</option>
-              </select>
-            </label>
-
-            {(rowingType === 'sweeping' || rowingType === 'both') && (
-              <label>
-                Sweep Side:
-                <select value={sweepSide} onChange={e => setSweepSide(e.target.value)}>
-                  <option value="">Select...</option>
-                  <option value="port">Port</option>
-                  <option value="starboard">Starboard</option>
+          {(role === 'oarsman' || role === 'coxswain') && (
+            <>
+              <div className="field">
+                <label className="field-label">Rowing type</label>
+                <select
+                  className="input"
+                  value={rowingType}
+                  onChange={(e) => setRowingType(e.target.value as User['rowing_type'])}
+                >
+                  <option value="">Select…</option>
+                  <option value="sculling">Sculling</option>
+                  <option value="sweeping">Sweeping</option>
                   <option value="both">Both</option>
                 </select>
-              </label>
-            )}
+              </div>
 
-            <label>
-              Weight (kg, optional):
-              <input type="number" value={weight} onChange={e => setWeight(e.target.value)} step="0.1" />
+              {(rowingType === 'sweeping' || rowingType === 'both') && (
+                <div className="field">
+                  <label className="field-label">Sweep side</label>
+                  <select
+                    className="input"
+                    value={sweepSide}
+                    onChange={(e) => setSweepSide(e.target.value as User['sweep_side'])}
+                  >
+                    <option value="">Select…</option>
+                    <option value="port">Port</option>
+                    <option value="starboard">Starboard</option>
+                    <option value="both">Both</option>
+                  </select>
+                </div>
+              )}
+
+              <div className="field">
+                <label className="field-label">Weight (kg, optional)</label>
+                <input
+                  className="input"
+                  type="number"
+                  step="0.1"
+                  value={weight}
+                  onChange={(e) => setWeight(e.target.value)}
+                />
+              </div>
+            </>
+          )}
+
+          {role === 'oarsman' && (
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-1)' }}>
+              <input type="checkbox" checked={canCox} onChange={(e) => setCanCox(e.target.checked)} />
+              I can also cox
             </label>
-          </>
-        )}
+          )}
 
-        {role === 'oarsman' && (
-          <label className="checkbox-label">
-            <input type="checkbox" checked={canCox} onChange={e => setCanCox(e.target.checked)} />
-            I can also cox
-          </label>
-        )}
-
-        <button type="submit">Save Profile</button>
-      </form>
+          <button className="btn primary lg" type="submit" disabled={busy}>
+            {busy ? 'Saving…' : 'Save profile'}
+          </button>
+        </form>
+      </div>
     </div>
   );
 }

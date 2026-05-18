@@ -1,38 +1,96 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { register, login } from '../api/auth';
+import { useUser } from '../hooks/userContext';
 
 export default function Register() {
-  const [form, setForm] = useState({ email: '', username: '', password: '', first_name: '', last_name: '' });
+  const [form, setForm] = useState({
+    email: '',
+    username: '',
+    password: '',
+    first_name: '',
+    last_name: '',
+  });
   const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
   const navigate = useNavigate();
+  const { reload } = useUser();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setBusy(true);
     try {
       await register(form);
       await login(form.email, form.password);
-      navigate('/dashboard');
-    } catch (err: any) {
-      setError(err.response?.data?.email?.[0] || err.response?.data?.password?.[0] || 'Registration failed');
+      await reload();
+      navigate('/home');
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: Record<string, string[]> } };
+      setError(
+        e.response?.data?.email?.[0] ||
+          e.response?.data?.password?.[0] ||
+          e.response?.data?.username?.[0] ||
+          'Registration failed'
+      );
+    } finally {
+      setBusy(false);
     }
   };
 
+  const update = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
+    setForm({ ...form, [k]: e.target.value });
+
   return (
     <div className="auth-page">
-      <h1>RowOrg</h1>
-      <h2>Register</h2>
-      {error && <p className="error">{error}</p>}
-      <form onSubmit={handleSubmit}>
-        <input placeholder="First Name" value={form.first_name} onChange={e => setForm({ ...form, first_name: e.target.value })} required />
-        <input placeholder="Last Name" value={form.last_name} onChange={e => setForm({ ...form, last_name: e.target.value })} required />
-        <input placeholder="Username" value={form.username} onChange={e => setForm({ ...form, username: e.target.value })} required />
-        <input type="email" placeholder="Email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} required />
-        <input type="password" placeholder="Password (min 8 chars)" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} required minLength={8} />
-        <button type="submit">Register</button>
-      </form>
-      <p>Already have an account? <Link to="/login">Login</Link></p>
+      <div className="auth-card">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div className="brand-mark">R</div>
+          <div className="brand-name">
+            roworg<span>.</span>
+          </div>
+        </div>
+        <h1>Create your account</h1>
+        <p className="sub">Coaches and rowers — same login.</p>
+        {error && <div className="error-msg">{error}</div>}
+        <form onSubmit={handleSubmit}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div className="field">
+              <label className="field-label">First name</label>
+              <input className="input" value={form.first_name} onChange={update('first_name')} required />
+            </div>
+            <div className="field">
+              <label className="field-label">Last name</label>
+              <input className="input" value={form.last_name} onChange={update('last_name')} required />
+            </div>
+          </div>
+          <div className="field">
+            <label className="field-label">Username</label>
+            <input className="input" value={form.username} onChange={update('username')} required />
+          </div>
+          <div className="field">
+            <label className="field-label">Email</label>
+            <input className="input" type="email" value={form.email} onChange={update('email')} required />
+          </div>
+          <div className="field">
+            <label className="field-label">Password</label>
+            <input
+              className="input"
+              type="password"
+              value={form.password}
+              onChange={update('password')}
+              required
+              minLength={8}
+            />
+          </div>
+          <button className="btn primary lg" type="submit" disabled={busy}>
+            {busy ? 'Creating…' : 'Create account'}
+          </button>
+        </form>
+        <div className="alt-link">
+          Already have an account? <Link to="/login">Log in</Link>
+        </div>
+      </div>
     </div>
   );
 }
