@@ -10,11 +10,15 @@ export default function TeamSetup() {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const navigate = useNavigate();
-  const { reload } = useUser();
+  const { user, setUser, reload } = useUser();
 
-  const afterJoin = async () => {
-    await reload();
-    navigate('/home');
+  // Apply the new team to the local user synchronously so RequireAuth at /home
+  // sees user.team set when this component unmounts. reload() runs in the
+  // background to pick up any other server-side fields.
+  const afterJoin = (teamId: string) => {
+    if (user) setUser({ ...user, team: teamId });
+    void reload();
+    navigate('/home', { replace: true });
   };
 
   const handleCreate = async (e: React.FormEvent) => {
@@ -22,8 +26,8 @@ export default function TeamSetup() {
     setError('');
     setBusy(true);
     try {
-      await createTeam(name);
-      await afterJoin();
+      const team = await createTeam(name);
+      afterJoin(team.id);
     } catch {
       setError('Failed to create team');
     } finally {
@@ -36,8 +40,8 @@ export default function TeamSetup() {
     setError('');
     setBusy(true);
     try {
-      await joinTeam(code);
-      await afterJoin();
+      const team = await joinTeam(code);
+      afterJoin(team.id);
     } catch {
       setError('Invalid invite code');
     } finally {

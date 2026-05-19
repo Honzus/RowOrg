@@ -5,7 +5,7 @@ import { useUser } from '../hooks/userContext';
 import type { User } from '../types';
 
 export default function ProfileSetup() {
-  const { user, reload } = useUser();
+  const { user, setUser, reload } = useUser();
   const navigate = useNavigate();
   const [role, setRole] = useState<User['role']>(user?.role || '');
   const [rowingType, setRowingType] = useState<User['rowing_type']>(user?.rowing_type || '');
@@ -20,15 +20,18 @@ export default function ProfileSetup() {
     setError('');
     setBusy(true);
     try {
-      await updateProfile({
+      const updated = await updateProfile({
         role,
         rowing_type: rowingType,
         sweep_side: sweepSide,
         can_cox: canCox,
         weight: weight ? parseFloat(weight) : null,
       });
-      await reload();
-      navigate('/home');
+      // Update local user state synchronously with the server response so
+      // RequireAuth at /home sees the new role on the next render.
+      setUser(updated);
+      void reload();
+      navigate('/home', { replace: true });
     } catch {
       setError('Failed to update profile');
     } finally {
