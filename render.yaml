@@ -11,8 +11,8 @@ services:
     plan: free
     rootDir: backend
     buildCommand: "./build.sh"
-    startCommand: "gunicorn roworg.wsgi"
-    healthCheckPath: /api/auth/login/
+    startCommand: "gunicorn roworg.wsgi --bind 0.0.0.0:$PORT"
+    healthCheckPath: /admin/login/
     envVars:
       - key: PYTHON_VERSION
         value: "3.12.0"
